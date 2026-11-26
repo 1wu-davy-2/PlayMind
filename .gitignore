@@ -1,0 +1,15 @@
+# 依赖
+node_modules/
+
+# 会话内部数据（memory / 工具状态）
+.workbuddy/
+.playwright-cli/
+
+# 日志与临时产物
+*.log
+shots/
+*.png
+
+# 环境变量
+.env
+.env.*

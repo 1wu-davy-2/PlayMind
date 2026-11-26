@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>牌桌 · TABLE</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2317130C'/%3E%3Ctext x='16' y='23' font-size='17' font-family='serif' font-weight='700' fill='%23B23A28' text-anchor='middle'%3E%E6%A1%8C%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/table.css">
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<div class="shell">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand__line">
+        <span class="brand__mark">TABLE</span>
+        <span class="brand__mark brand__mark--alt">通用</span>
+      </div>
+      <div class="brand__cn"><b id="game-title">通用牌桌</b> · 房号 <b id="room-id">——</b></div>
+    </div>
+
+    <div class="statline" id="statline"></div>
+
+    <span class="modechip" id="mode"><span class="dot"></span><span id="mode-text">连接中</span></span>
+
+    <form class="tokenbar" id="token-form" autocomplete="off">
+      <label class="tokenbar__label" for="token-input">我有 token</label>
+      <input class="tokenbar__input" id="token-input" name="token" type="text"
+             placeholder="粘贴你的 token" spellcheck="false" autocomplete="off">
+      <button class="tbtn tbtn--sm tbtn--ghost" type="submit">接 入</button>
+    </form>
+
+    <button class="tbtn tbtn--sm tbtn--ghost" id="btn-abort" hidden>强制结束</button>
+    <a class="tbtn tbtn--sm tbtn--ghost topbar__home" href="/">大 厅</a>
+  </header>
+
+  <main class="board">
+
+    <section class="panel roster" aria-label="在场人员">
+      <div class="panel__head">
+        <span class="panel__kicker">在场人员 / ROSTER</span>
+        <span class="panel__meta" id="roster-count">—</span>
+      </div>
+      <div class="roster__body" id="roster"></div>
+      <div class="panel__foot" id="roster-foot">等待牌桌数据</div>
+    </section>
+
+    <section class="panel tabletop" aria-label="桌面">
+      <div class="tabletop__mark" aria-hidden="true">桌</div>
+
+      <div class="tabletop__head">
+        <div class="tabletop__heading">
+          <div class="panel__kicker" id="phase-kicker">牌 桌 / TABLE</div>
+          <h1 class="tabletop__title" id="table-title">等待开局</h1>
+        </div>
+        <div class="roundchip" id="round-chip" hidden></div>
+      </div>
+
+      <div class="winner" id="winner" hidden></div>
+
+      <div class="dice-stage" id="dice-stage" hidden></div>
+      <div class="fx-stage" id="fx-stage" hidden></div>
+
+      <div class="tabletop__scroll">
+        <div class="rows" id="table-rows"></div>
+        <p class="tabletop__note" id="table-note" hidden></p>
+      </div>
+
+      <div class="selfcard" id="self" hidden></div>
+
+      <div class="action" id="action" aria-live="polite">
+        <div class="action__kicker">
+          <span id="action-kind">待 命</span>
+          <span class="action__timer" id="action-timer"></span>
+        </div>
+        <div class="action__meter" id="action-meter-wrap" hidden><i id="action-meter"></i></div>
+        <div class="action__prompt" id="action-prompt">正在接入牌局…</div>
+        <div class="action__body" id="action-body"></div>
+        <div class="action__say" id="say-wrap" hidden>
+          <label class="action__saylabel" for="say-input">说一句（可选）</label>
+          <input class="ainput" id="say-input" maxlength="200" placeholder="先说两句…" autocomplete="off">
+        </div>
+        <div class="action__foot" id="action-foot"></div>
+      </div>
+    </section>
+
+    <aside class="panel logpanel" aria-label="公开记录">
+      <div class="panel__head">
+        <span class="panel__kicker">公开记录 / WIRETAP</span>
+        <span class="panel__meta" id="log-count">0</span>
+      </div>
+      <div class="log" id="log"></div>
+      <div class="panel__foot">
+        <span id="conn-foot">SSE</span>
+        <span>CH · 04</span>
+      </div>
+    </aside>
+
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="/table.js"></script>
+</body>
+</html>

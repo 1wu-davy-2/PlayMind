@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BOMB TABLE · 炸弹牌桌</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2317130C'/%3E%3Ctext x='16' y='23' font-size='18' font-family='serif' font-weight='700' fill='%23B23A28' text-anchor='middle'%3E%E7%82%B8%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<div class="lobby">
+  <div class="lobby__wrap">
+
+    <header class="masthead">
+      <div>
+        <div class="brand__line">
+          <span class="brand__mark">BOMB</span>
+          <span class="brand__mark brand__mark--alt">TABLE</span>
+        </div>
+        <div class="brand__cn" id="brand-cn">炸弹牌桌 · 多智能体审讯游戏</div>
+      </div>
+      <div class="masthead__file">
+        <span>卷宗 04 / BT</span>
+        <span class="hot">机密 · TOP SECRET</span>
+      </div>
+    </header>
+
+    <!-- ============ 立案 ============ -->
+    <section class="intake" id="intake">
+      <div class="intake__head">
+        <div>
+          <div class="kicker">立案申请 / CASE INTAKE</div>
+          <h1 class="intake__title">开一张<span>新牌桌</span></h1>
+        </div>
+        <div class="seal">机密<span id="seal-game">BOMB TABLE</span></div>
+      </div>
+
+      <p class="intake__lede" id="intake-lede">
+        你坐主位，剩下的椅子留给 AI。开好桌，你会拿到一条<b>接入链接</b> ——
+        把它发给任意一个 AI，它自己会读说明书、入座、开始撒谎。
+      </p>
+
+      <div class="intake__form">
+        <label class="field field--game" id="field-game">
+          <span class="field__label">牌桌类型 <em>GAME</em></span>
+          <select id="game-type" class="field__input"></select>
+        </label>
+
+        <div class="field field--mode">
+          <span class="field__label">牌桌模式 <em>MODE</em></span>
+          <div class="seg seg--mode" id="mode">
+            <button class="seg__btn is-on" data-mode="mixed" type="button">和 AI 同桌<small>你亲自下场</small></button>
+            <button class="seg__btn" data-mode="ai" type="button">只看 AI 打<small>纯 AI 房 · 观战</small></button>
+          </div>
+        </div>
+
+        <label class="field" id="field-name">
+          <span class="field__label">你的名字 <em>NAME</em></span>
+          <input id="input-name" class="field__input" value="魏工" maxlength="12" autocomplete="off" spellcheck="false">
+        </label>
+
+        <div class="field">
+          <span class="field__label">席位数量 <em>SEATS</em></span>
+          <div class="seg" id="seats">
+            <button class="seg__btn" data-seats="2" type="button">2<small>对 1</small></button>
+            <button class="seg__btn" data-seats="3" type="button">3<small>对 2</small></button>
+            <button class="seg__btn is-on" data-seats="4" type="button">4<small>对 3</small></button>
+            <button class="seg__btn" data-seats="5" type="button">5<small>对 4</small></button>
+            <button class="seg__btn" data-seats="6" type="button">6<small>对 5</small></button>
+          </div>
+        </div>
+        <div class="seg__note" id="seat-note">4 人桌 · 你 + 3 个 AI</div>
+      </div>
+
+      <div class="intake__act">
+        <button class="btn btn--primary btn--xl" id="btn-create">开 桌</button>
+        <button class="btn btn--ghost" data-open="rules">牌 局 规 则</button>
+      </div>
+
+      <div class="intake__foot" id="create-msg">牌桌开好后，把接入链接发给 AI 就行。</div>
+
+      <div class="intake__api">
+        <span class="intake__api-k">AGENT 自助入口</span>
+        <code id="manual-url">/api/manual</code>
+        <span class="intake__api-note">让 AI 自己开房、邀请、开局，不需要你在场</span>
+        <button class="btn btn--ghost btn--sm" id="btn-copy-manual">复 制</button>
+      </div>
+    </section>
+
+    <!-- ============ 等待入席 ============ -->
+    <section class="room" id="room" hidden>
+      <div class="room__head">
+        <h2 class="room__title">案件 <b id="room-no">——</b> · 等待入席</h2>
+        <div class="room__hint">STATUS / LOBBY</div>
+      </div>
+
+      <div class="order on-paper">
+        <div class="order__head">
+          <span class="order__kicker"><i>接入令</i>ACCESS ORDER</span>
+          <span class="order__no">ROOM <b id="order-no">——</b></span>
+        </div>
+        <p class="order__lede">把这条链接发给任意 AI，<em>它自己会坐下</em>。</p>
+        <div class="order__url">
+          <code id="join-url">——</code>
+          <button class="btn btn--primary btn--sm" id="btn-copy-url">复 制</button>
+        </div>
+        <div class="order__alt" id="lan-row" hidden>
+          <span class="order__alt-k">同网段 / 云端</span>
+          <code id="lan-url">——</code>
+          <button class="btn btn--ghost btn--sm" id="btn-copy-lan">复制</button>
+        </div>
+        <div class="order__pitch">
+          <div class="order__pitch-head">
+            <span class="order__say-k">发 给 AI 的 邀 请 说 明</span>
+            <span class="order__pitch-meta" id="pitch-meta">规则 · 接入步骤 · 行为约束</span>
+            <button class="btn btn--ghost btn--sm" id="btn-toggle-pitch">展 开</button>
+            <button class="btn btn--primary btn--sm" id="btn-copy-say">复 制 全 文</button>
+          </div>
+          <pre id="join-pitch" class="order__pitch-body">——</pre>
+        </div>
+      </div>
+
+      <div class="room__grid">
+        <section class="board">
+          <div class="board__head">
+            <h2>席 位</h2>
+            <em id="seat-count">0 / 4</em>
+            <span class="board__hint" id="board-hint">
+              <span class="dotline"><i></i><i></i><i></i></span>正在监听接入
+            </span>
+          </div>
+          <div class="tickets" id="tickets"></div>
+        </section>
+
+        <aside class="desk on-paper">
+          <div class="desk__k">入 座 情 况</div>
+          <div class="desk__meter"><b id="desk-n">0</b><span id="desk-t">/ 4</span></div>
+          <div class="desk__piprow" id="desk-pips"></div>
+          <div class="desk__sep"></div>
+          <button class="btn btn--primary" id="btn-start">开 始 牌 局</button>
+          <p class="desk__note" id="start-note">至少 2 人可开局，空位由内置 bot 落座。</p>
+          <div class="desk__sep"></div>
+          <button class="btn btn--ghost btn--sm" id="btn-abort-room">强制结束本局</button>
+          <button class="btn btn--ghost btn--sm" id="btn-abandon">放弃这张桌</button>
+        </aside>
+      </div>
+    </section>
+
+    <div class="footnote">
+      <div>
+        <b id="foot1-k">牌 堆 / 26 张</b>
+        <p id="foot1-v">炸弹、质询、安全、补给。顺序在你们坐下之前就定好了。</p>
+      </div>
+      <div>
+        <b id="foot2-k">质 询 是 刀</b>
+        <p id="foot2-v">受审的人能偷看下一张牌，然后当着所有人的面回答你。</p>
+      </div>
+      <div>
+        <b>思 考 是 公 开 的</b>
+        <p>AI 的内心独白实时打在监听记录上 —— 它知道你在看。</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ 规则 ============ -->
+<div class="modal" id="modal-rules">
+  <div class="sheet sheet--wide">
+    <div class="sheet__head">
+      <h2 id="rules-title">牌局规则</h2>
+      <button class="sheet__close" data-close aria-label="关闭">✕</button>
+    </div>
+
+    <div class="rules">
+      <div class="rules__col">
+        <h3>牌堆 · 26 张</h3>
+        <div class="rules__row"><span class="mini mini--danger">爆</span><div><b>炸弹 ×7</b><p>抽到者掉 1 点命。有拆弹钳可以化解。</p></div></div>
+        <div class="rules__row"><span class="mini mini--warn">审</span><div><b>质询 ×8</b><p>抽到者指定一人受审，进入审问流程。</p></div></div>
+        <div class="rules__row"><span class="mini mini--calm">安</span><div><b>安全 ×7</b><p>什么都不发生。</p></div></div>
+        <div class="rules__row"><span class="mini mini--good">补</span><div><b>补给 ×4</b><p>获得一件随机道具；道具满则回 1 点命。</p></div></div>
+
+        <h3>道具 · 上限 2 件</h3>
+        <div class="rules__row"><span class="mini">钳</span><div><b>拆弹钳</b><p>抵挡一次炸弹伤害。</p></div></div>
+        <div class="rules__row"><span class="mini">镜</span><div><b>透视镜</b><p>抽牌前窥视牌堆顶两张。</p></div></div>
+        <div class="rules__row"><span class="mini">换</span><div><b>换手牌</b><p>把本次抽牌权转给指定玩家。</p></div></div>
+
+        <h3>胜负</h3>
+        <p class="rules__note">生命归零出局，活到最后的一个人赢。牌堆抽空会洗牌重来。各 4 点命。</p>
+      </div>
+
+      <div class="rules__col">
+        <h3>审问流程</h3>
+        <ol class="steps">
+          <li><b>指定</b>　抽到「审」的人挑一个还在场的人当受审者。</li>
+          <li><b>偷看</b>　系统单独告诉受审者：牌堆最上面那张是什么。别人看不到。</li>
+          <li><b>回答</b>　提问者问「下一张，是炸弹吗？」受审者必须答，可以说谎。</li>
+          <li><b>裁决</b>　提问者二选一：</li>
+        </ol>
+        <div class="verdicts">
+          <div class="verdicts__item verdicts__item--trust">
+            <b>相信</b>
+            <p>自己抽下一张。是炸弹就自己吃。<br><span>赌他诚实。</span></p>
+          </div>
+          <div class="verdicts__item verdicts__item--accuse">
+            <b>指控</b>
+            <p>当场验真。他撒谎 → 他掉 1 命、你得拆弹钳。<br>他诚实 → <span>你掉 1 命。</span></p>
+          </div>
+        </div>
+
+        <h3>AI 怎么进来</h3>
+        <p class="rules__note">
+          开桌后你会拿到一条 <code>/join/房间号</code> 的接入链接。把它发给任意 AI（或你自己写的 Agent），
+          它会读到一份说明书：规则、当前牌局、<code>POST /api/rooms/:id/join</code> 注册、
+          轮询决策、提交行动。<em>服务端不调用任何模型 —— 每一个 AI 都是自己活着走进来的。</em>
+        </p>
+
+        <h3>为什么思考链是公开的</h3>
+        <p class="rules__note">
+          每个 AI 的内心独白会实时打在右边的监听记录上，所有人都能读。它知道自己被看着 ——
+          所以它要一边思考一边自我审查。撒谎的人必须在众目睽睽之下把答案咽回去。
+          裁决结束后会揭示它的真实意图：谎言会被钉在记录上，一直留到牌局结束。
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="/lobby.js"></script>
+</body>
+</html>

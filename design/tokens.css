@@ -1,0 +1,179 @@
+/* ============================================================
+   BOMB TABLE · Fluid Design Tokens
+   ------------------------------------------------------------
+   品牌基线：1960s 冷战审讯档案 / 米黄纸墨 / 朱红印章
+   交互层：Apple 流体界面（毛玻璃、弹簧、动量、可中断、橡皮筋）
+   参考：
+   - apple-design/references/spring-param-ref.md（弹簧参数，勿改数值）
+   - apple-design/references/wwdc-design-rules.md
+   - ui-ux-pro-max/assets/data/{styles,typography,ux-guidelines}.csv
+   ============================================================ */
+
+:root {
+  /* ---------- 1. 品牌色（沿用 public/styles.css / table.css，勿改） ---------- */
+  --paper:      #EDE4CF;   /* 档案纸主色 */
+  --paper-hi:   #FAF5E7;   /* 高光纸 */
+  --paper-lo:   #DFD3B8;   /* 阴影纸 */
+  --ink:        #17130C;   /* 墨色正文 */
+  --ink-70:     rgba(23, 19, 12, .70);
+  --ink-45:     rgba(23, 19, 12, .45);
+  --ink-22:     rgba(23, 19, 12, .22);
+  --ink-10:     rgba(23, 19, 12, .10);
+  --red:        #B23A28;   /* 朱红印章 */
+  --red-deep:   #86281A;
+  --red-soft:   #E3907C;
+  --olive:      #55604E;
+  --steel:      #3A6B80;
+  --gold:       #A07C34;
+
+  /* ---------- 2. 语义色（WCAG AA：正文对比 ≥ 4.5:1） ---------- */
+  --c-danger:   var(--red);        /* 炸弹 / 删除 / 强制结束 */
+  --c-danger-bg:rgba(178, 58, 40, .10);
+  --c-warn:     #8A6410;          /* 质询 / 倒计时告警（深金，纸上可读） */
+  --c-warn-bg:  rgba(160, 124, 52, .14);
+  --c-success:  #3E5B3A;          /* 安全 / 成功（深橄榄） */
+  --c-success-bg:rgba(85, 96, 78, .14);
+  --c-info:     var(--steel);     /* 监听 / 链接 / 中性提示 */
+  --c-info-bg:  rgba(58, 107, 128, .12);
+  --c-muted:    var(--ink-45);    /* 次要文字（仅用于 ≥18px 或辅助信息） */
+
+  /* ---------- 3. 材质（Vibrancy + Glassmorphism） ---------- */
+  /* 参考 styles.csv: Glassmorphism → backdrop blur 10-20px,
+     1px solid rgba(255,255,255,0.2) 描边, Z-depth */
+  --glass-bg-thin:   rgba(250, 245, 231, .55);  /* 浅层：卡片、分段控件 */
+  --glass-bg:        rgba(237, 228, 207, .72);  /* 中层：面板、工具栏 */
+  --glass-bg-thick:  rgba(250, 245, 231, .88);  /* 深层：弹窗、抽屉 */
+  --glass-blur:      16px;        /* 落在 10-20px 区间 */
+  --glass-blur-sm:   10px;
+  --glass-blur-lg:   20px;
+  --glass-border:    1px solid rgba(255, 255, 255, .48);
+  --glass-border-ink:1px solid var(--ink-10);
+  --glass-sheen:     linear-gradient(180deg, rgba(255,255,255,.42), rgba(255,255,255,0) 42%);
+  --vibrancy-text:   rgba(23, 19, 12, .92);      /* 毛玻璃上的高对比文字 */
+  --vibrancy-text-2: rgba(23, 19, 12, .62);
+
+  /* ---------- 4. 间距（4pt 基准，响应式夹紧） ---------- */
+  --sp-1: 4px;   --sp-2: 8px;   --sp-3: 12px;  --sp-4: 16px;
+  --sp-5: 20px;  --sp-6: 24px;  --sp-8: 32px;  --sp-10: 40px;
+  --sp-12: 48px; --sp-16: 64px;
+  --sp-fluid-1: clamp(8px, 1.2vw, 12px);
+  --sp-fluid-2: clamp(16px, 2.4vw, 24px);
+  --sp-fluid-3: clamp(24px, 4vw, 48px);
+
+  /* ---------- 5. 排版（系统字体，无外部依赖；光学字号） ---------- */
+  --font-display: "Songti SC", "STSong", "SimSun", "Noto Serif SC", "Source Han Serif SC", serif;
+  --font-body:    "Songti SC", "STSong", "SimSun", "Noto Serif SC", serif;
+  --font-sans:    "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+  --font-mono:    "Courier New", "Courier", "Consolas", monospace;
+
+  /* type scale: 字号 / 字间距 / 行高 —— 大字号收紧字距，小字号放宽 */
+  --t-display:  54px;  --t-display-ls: -0.022em; --t-display-lh: 1.06;
+  --t-h1:       38px;  --t-h1-ls:      -0.018em; --t-h1-lh:      1.12;
+  --t-h2:       28px;  --t-h2-ls:      -0.012em; --t-h2-lh:      1.18;
+  --t-h3:       20px;  --t-h3-ls:      -0.008em; --t-h3-lh:      1.26;
+  --t-body:     17px;  --t-body-ls:     0.004em; --t-body-lh:     1.58;
+  --t-small:    14px;  --t-small-ls:    0.012em; --t-small-lh:    1.50;
+  --t-caption:  12px;  --t-caption-ls:  0.06em;  --t-caption-lh:  1.42;
+  --t-mono:     13px;  --t-mono-ls:     0.02em;  --t-mono-lh:     1.5;
+  --t-fluid-display: clamp(34px, 5.2vw, 54px);
+
+  /* ---------- 6. 圆角 ---------- */
+  --r-xs: 4px;  --r-sm: 8px;  --r-md: 12px;
+  --r-lg: 18px; --r-xl: 26px; --r-pill: 999px;
+
+  /* ---------- 7. 深度 / 阴影（纸墨 + 玻璃双层） ---------- */
+  --sh-1: 0 1px 2px rgba(23,19,12,.10), 0 2px 8px rgba(23,19,12,.06);
+  --sh-2: 0 4px 12px rgba(23,19,12,.12), 0 12px 28px rgba(23,19,12,.08);
+  --sh-3: 0 12px 28px rgba(23,19,12,.16), 0 28px 60px rgba(23,19,12,.14);
+  --sh-sheet: 0 -8px 40px rgba(23,19,12,.22);
+  --edge: 0 20px 50px -24px rgba(0, 0, 0, .75); /* 保留自现有设计 */
+
+  /* ---------- 8. 弹簧参数（来源：spring-param-ref.md，禁止臆改） ---------- */
+  /* 阻尼比 damping ratio：1.0 临界无弹跳；<1 产生弹跳
+     响应时间 response：趋近目标的秒数，弹簧无固定时长 */
+  --spring-move-damping:  1.0;   /* 官方：移动/画中画 */
+  --spring-move-response: 0.4s;
+  --spring-rotate-damping:0.8;   /* 官方：旋转动画 */
+  --spring-rotate-response:0.4s;
+  --spring-sheet-damping: 0.8;   /* 官方：抽屉/底部弹窗 sheet */
+  --spring-sheet-response:0.3s;
+  --spring-ui-damping:    1.0;   /* Web映射：默认普通 UI */
+  --spring-gesture-damping:0.8;  /* Web映射：手势抛动/轻扫（带动量时才用） */
+
+  /* CSS 侧近似曲线（用于 transition/animation 的优雅降级）；
+     精确弹簧请用 Web Animations API / Framer Motion 的 damping+response。 */
+  --ease-spring: linear(
+    0, 0.0098 0.8%, 0.0396 2.2%, 0.0892 4.1%, 0.1573 6.7%,
+    0.243 9.9%, 0.3453 13.8%, 0.4631 18.4%, 0.5953 23.6%,
+    0.7408 29.4%, 0.8988 35.8%, 1.0241 42%, 1.1209 48.8%,
+    1.1889 56%, 1.2296 63.7%, 1.2457 71.6%, 1.2392 79.8%,
+    1.2148 88%, 1.1762 96.3%, 1.1289 104%, 1.0792 112%,
+    1.0332 120%, 1 128%
+  );
+  --ease-gesture: cubic-bezier(.22, 1.2, .36, 1); /* 手势释放：轻微回弹 */
+  --ease-out:     cubic-bezier(.22, .61, .36, 1); /* 出场：先快后慢 */
+  --ease-in-out:  cubic-bezier(.42, 0, .58, 1);
+
+  /* 反馈时长：按下瞬间响应，释放走弹簧 */
+  --dur-press:    0ms;    /* 按下即反馈 */
+  --dur-release:  400ms;  /* ≈ move response 0.4s */
+  --dur-sheet:    300ms;  /* ≈ sheet response 0.3s */
+  --dur-fade:     180ms;
+
+  /* ---------- 9. 动量投射（Apple 官方） ---------- */
+  --deceleration-normal: 0.998; /* 普通滚动 */
+  --deceleration-crisp:  0.99;  /* 更干脆的吸附 */
+
+  /* ---------- 10. 无障碍 ---------- */
+  --focus-ring: 0 0 0 3px rgba(178, 58, 40, .42);
+  --focus-ring-strong: 0 0 0 3px var(--red), 0 0 0 6px var(--paper-hi);
+}
+
+/* ============================================================
+   无障碍媒体查询
+   ============================================================ */
+
+/* 1) 减弱动效：去掉位移/缩放，只保留透明度交接（ux-guidelines.csv #9） */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ease-spring:   linear;
+    --ease-gesture:  linear;
+    --dur-release:   1ms;
+    --dur-sheet:     1ms;
+    --dur-fade:      1ms;
+  }
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 2) 高对比度：加厚描边，提升文字与边框对比（ux-guidelines.csv #36/#37） */
+@media (prefers-contrast: more) {
+  :root {
+    --ink-70: rgba(23, 19, 12, .95);
+    --ink-45: rgba(23, 19, 12, .82);
+    --glass-border: 1px solid var(--ink);
+    --glass-border-ink: 1px solid var(--ink);
+    --focus-ring: 0 0 0 3px var(--red);
+  }
+}
+
+/* 3) 降低透明度：毛玻璃退化为不透明纸面，避免文字讀性下降 */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass-bg-thin:  #F6F0DE;
+    --glass-bg:       #EDE4CF;
+    --glass-bg-thick: #FAF5E7;
+    --glass-blur:     0px;
+    --glass-blur-sm:  0px;
+    --glass-blur-lg:  0px;
+  }
+}
+
+/* 4) 强制颜色模式（Windows High Contrast） */
+@media (forced-colors: active) {
+  .glass, .sheet, .panel { border: 1px solid CanvasText; }
+}

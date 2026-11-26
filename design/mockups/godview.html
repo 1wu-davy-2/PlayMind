@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>造物主后台 · GODVIEW（流体设计稿）</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2317130C'/%3E%3Ctext x='16' y='23' font-size='17' font-family='serif' font-weight='700' fill='%23B23A28' text-anchor='middle'%3E%E7%A5%9E%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --paper:#EDE4CF;--paper-hi:#FAF5E7;--paper-lo:#DFD3B8;--ink:#17130C;
+  --ink-70:rgba(23,19,12,.70);--ink-45:rgba(23,19,12,.45);--ink-22:rgba(23,19,12,.22);--ink-10:rgba(23,19,12,.10);
+  --red:#B23A28;--red-deep:#86281A;--olive:#55604E;--steel:#3A6B80;--gold:#A07C34;
+  --c-danger:#B23A28;--c-warn:#8A6410;--c-success:#3E5B3A;--c-info:#3A6B80;
+  --glass-bg:rgba(237,228,207,.74);--glass-bg-thick:rgba(250,245,231,.92);
+  --glass-blur:16px;--glass-border:1px solid rgba(255,255,255,.5);
+  --r-sm:8px;--r-md:12px;--r-lg:18px;--r-pill:999px;
+  --sh-1:0 1px 2px rgba(23,19,12,.10),0 2px 8px rgba(23,19,12,.06);
+  --sh-2:0 4px 12px rgba(23,19,12,.12),0 12px 28px rgba(23,19,12,.08);
+  --sh-3:0 12px 28px rgba(23,19,12,.16),0 28px 60px rgba(23,19,12,.14);
+  --ease-spring:linear(0,0.01 1%,0.09 4%,0.24 10%,0.46 18%,0.74 29%,1.02 42%,1.19 56%,1.24 71%,1.21 88%,1.13 104%,1.05 118%,1 128%);
+  --dur:400ms;--focus:0 0 0 3px rgba(178,58,40,.42);
+  --font-display:"Songti SC","STSong","SimSun","Noto Serif SC",serif;
+  --font-sans:"PingFang SC","Microsoft YaHei",sans-serif;
+  --font-mono:"Courier New",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font-sans);color:var(--ink);background:var(--paper);
+  background-image:radial-gradient(circle at 10% 0%,rgba(250,245,231,.9),transparent 55%),
+  radial-gradient(circle at 90% 100%,rgba(223,211,184,.6),transparent 50%);min-height:100vh}
+.grain{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.26;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+.shell{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:24px}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;
+  border-bottom:2px solid var(--ink);padding-bottom:16px;margin-bottom:24px}
+.kicker{font-family:var(--font-mono);font-size:12px;letter-spacing:.2em;color:var(--red)}
+h1{font-family:var(--font-display);font-size:clamp(30px,4vw,44px);margin:6px 0 0;letter-spacing:-.018em}
+h1 span{color:var(--red)}
+.power-note{font-family:var(--font-display);font-size:13px;color:var(--ink-70);max-width:520px;text-align:right}
+.power-note b{color:var(--red)}
+.statrow{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+.stat{flex:1;min-width:150px;padding:14px 18px;border-radius:var(--r-lg);
+  background:var(--glass-bg);-webkit-backdrop-filter:blur(var(--glass-blur));backdrop-filter:blur(var(--glass-blur));
+  border:var(--glass-border);box-shadow:var(--sh-1)}
+.stat b{display:block;font-family:var(--font-display);font-size:30px;line-height:1}
+.stat span{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:var(--ink-70)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,1fr);gap:18px;align-items:start}
+@media(max-width:960px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--glass-bg);-webkit-backdrop-filter:blur(var(--glass-blur));backdrop-filter:blur(var(--glass-blur));
+  border:var(--glass-border);border-radius:var(--r-lg);box-shadow:var(--sh-2);padding:18px}
+.panel h2{font-family:var(--font-display);font-size:18px;margin:0 0 14px}
+.phead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.phead h2{margin:0}
+.phead .meta{font-family:var(--font-mono);font-size:11px;color:var(--ink-45)}
+
+/* filters */
+.filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.filters input,.filters select{padding:8px 12px;border:1px solid var(--ink-22);border-radius:var(--r-sm);
+  background:rgba(255,255,255,.4);font-family:var(--font-sans);font-size:13px;color:var(--ink)}
+.filters input:focus,.filters select:focus{outline:none;box-shadow:var(--focus)}
+.seg{display:flex;gap:4px;background:rgba(23,19,12,.05);padding:4px;border-radius:var(--r-pill)}
+.seg button{cursor:pointer;border:0;background:transparent;padding:7px 14px;border-radius:var(--r-pill);
+  font-family:var(--font-sans);font-size:12px;color:var(--ink-70);
+  transition:transform var(--dur) var(--ease-spring),background var(--dur) var(--ease-spring)}
+.seg button:hover{transform:scale(1.05)}
+.seg button.on{background:var(--paper-hi);color:var(--ink);box-shadow:var(--sh-1);font-weight:700}
+.seg button:active{transform:scale(.95);transition-duration:0ms}
+
+/* room list */
+.room{display:flex;gap:14px;align-items:center;padding:14px;margin-bottom:10px;border-radius:var(--r-md);
+  border:1px solid var(--ink-10);background:rgba(255,255,255,.24);cursor:pointer;position:relative;
+  transition:transform var(--dur) var(--ease-spring),box-shadow var(--dur) var(--ease-spring),border-color var(--dur) var(--ease-spring)}
+.room:hover{transform:translateY(-3px);box-shadow:var(--sh-2)}
+.room:active{transform:scale(.99);transition-duration:0ms}
+.room.on{border-color:var(--red);box-shadow:inset 3px 0 0 var(--red),var(--sh-1)}
+.room__glyph{width:42px;height:42px;flex:0 0 auto;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-display);font-size:20px;font-weight:700;color:#fff;background:var(--red)}
+.room__id{font-family:var(--font-mono);font-size:13px;font-weight:700}
+.room__game{font-family:var(--font-display);font-size:14px;margin-top:2px}
+.room__meta{font-family:var(--font-mono);font-size:10px;color:var(--ink-45);margin-top:3px}
+.room__right{margin-left:auto;text-align:right}
+.badge{font-family:var(--font-mono);font-size:10px;padding:3px 9px;border-radius:var(--r-pill)}
+.badge.play{color:var(--c-success);background:rgba(62,91,58,.12)}
+.badge.wait{color:var(--c-warn);background:rgba(138,100,16,.12)}
+.badge.end{color:var(--ink-45);background:rgba(23,19,12,.06)}
+.room__n{font-family:var(--font-mono);font-size:11px;color:var(--ink-70);margin-top:6px}
+
+/* detail */
+.detail h3{font-family:var(--font-display);font-size:15px;margin:16px 0 8px}
+.detail h3:first-child{margin-top:0}
+.kv{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--ink-10);font-size:12px}
+.kv span:first-child{color:var(--ink-70)}
+.kv b{font-family:var(--font-mono)}
+.mask{font-family:var(--font-mono);color:var(--ink-45);filter:blur(0)}
+.reveal{position:relative;padding:12px;border-radius:var(--r-md);background:rgba(23,19,12,.05);
+  font-family:var(--font-mono);font-size:12px;line-height:1.9}
+/* masked 档：服务端已脱敏，DOM 里只有 redacted 标记与计数，不含任何 secret.data / 手牌数组 */
+.reveal.masked{color:var(--ink-70)}
+.masked-line{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed var(--ink-10)}
+.masked-line b{color:var(--ink-45);font-weight:400;text-align:right}
+.reveal.raw{animation:rise 420ms var(--ease-spring);background:rgba(178,58,40,.06);border:1px solid rgba(178,58,40,.25)}
+.reveal.raw .masked-line b{color:var(--red);font-weight:700}
+.reveal-hint{font-family:var(--font-mono);font-size:10px;color:var(--ink-45);margin-top:8px;line-height:1.6}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.warnbox{margin-top:12px;padding:10px 12px;border-radius:var(--r-sm);background:rgba(178,58,40,.08);
+  border:1px solid rgba(178,58,40,.3);font-size:11px;line-height:1.6;color:var(--red-deep)}
+.ops{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.btn{cursor:pointer;font-family:var(--font-sans);font-size:12px;font-weight:700;padding:9px 16px;border-radius:var(--r-pill);
+  border:1px solid var(--ink-22);background:transparent;color:var(--ink);
+  transition:transform var(--dur) var(--ease-spring),box-shadow var(--dur) var(--ease-spring)}
+.btn:hover{transform:translateY(-2px);box-shadow:var(--sh-1)}
+.btn:active{transform:scale(.96);transition-duration:0ms}
+.btn:focus-visible{outline:none;box-shadow:var(--focus)}
+.btn.danger{background:var(--red);color:#fff;border-color:var(--red-deep)}
+.btn.kick{color:var(--red);border-color:var(--red)}
+.btn[disabled]{opacity:.4;cursor:not-allowed;transform:none}
+
+/* audit */
+.audit{padding:12px 0;border-bottom:1px dashed var(--ink-10);font-size:12px;line-height:1.6}
+.audit .t{font-family:var(--font-mono);font-size:10px;color:var(--ink-45)}
+.audit b{color:var(--red)}
+.audit .who{font-family:var(--font-display);font-weight:700}
+.audit .seal{font-family:var(--font-mono);font-size:9px;color:var(--c-success);border:1px solid var(--c-success);
+  padding:1px 5px;border-radius:var(--r-sm);margin-left:4px}
+.empty{color:var(--ink-45);font-size:12px;font-style:italic;padding:16px 0;text-align:center}
+
+/* modal */
+.modal{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;
+  background:rgba(23,19,12,.4);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);padding:20px}
+.modal.show{display:flex}
+.sheet{width:min(440px,100%);padding:24px;border-radius:var(--r-lg);
+  background:var(--glass-bg-thick);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+  border:var(--glass-border);box-shadow:var(--sh-3)}
+.sheet h2{font-family:var(--font-display);font-size:22px;margin:0 0 10px}
+.sheet p{font-size:13px;color:var(--ink-70);line-height:1.7}
+.sheet .target{font-family:var(--font-mono);color:var(--red);font-weight:700}
+.sheet__ops{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+.confirm-check{display:flex;gap:8px;align-items:center;margin-top:14px;font-size:12px;color:var(--ink-70);cursor:pointer}
+.reason-box{margin-top:14px}
+.reason-box label{display:block;font-size:11px;font-family:var(--font-mono);letter-spacing:.08em;color:var(--ink-70);margin-bottom:6px}
+.reason-box textarea{width:100%;min-height:64px;resize:vertical;padding:9px 11px;border-radius:var(--r-sm);
+  border:1px solid var(--ink-22);background:rgba(255,255,255,.45);font-family:var(--font-sans);font-size:12px;color:var(--ink)}
+.reason-box textarea:focus{outline:none;box-shadow:var(--focus)}
+.reason-box .audit-tip{font-size:11px;color:var(--red);margin-top:5px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,20px);opacity:0;pointer-events:none;
+  background:var(--ink);color:var(--paper-hi);padding:11px 20px;border-radius:var(--r-pill);font-size:13px;
+  z-index:99;transition:all 300ms var(--ease-spring)}
+.toast.show{transform:translate(-50%,0);opacity:1}
+@media(prefers-reduced-motion:reduce){*{animation-duration:1ms!important;transition-duration:1ms!important}}
+</style>
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+<div class="shell">
+  <header class="top">
+    <div><div class="kicker">造物主视图 / GODVIEW · 机密</div><h1>全局<span>造物主</span>后台</h1></div>
+    <div class="power-note">你拥有<b>揭示一切</b>与<b>终止一切</b>的权力。<br>每一次越界，都会留下不可删的审计印记。</div>
+  </header>
+
+  <div class="statrow">
+    <div class="stat"><b>12</b><span>stats.activeRooms / 活跃房间</span></div>
+    <div class="stat"><b>38</b><span>stats.agentsPresent / 在场 AI</span></div>
+    <div class="stat"><b style="color:var(--red)">3</b><span>stats.revealsToday / 今日 raw 揭示</span></div>
+    <div class="stat"><b style="color:var(--c-success)">0</b><span>stats.unloggedOps / 未审计操作</span></div>
+  </div>
+
+  <div class="grid">
+    <!-- 房间列表 + 筛选 -->
+    <section class="panel">
+      <div class="phead"><h2>全局房间 / ALL ROOMS</h2><span class="meta">每 3s 轮询 GET /admin/rooms</span></div>
+      <div class="filters">
+        <input id="q" placeholder="搜索 displayCode / roomId…" aria-label="搜索房号">
+        <select id="fgame" aria-label="按游戏筛选">
+          <option value="">全部游戏</option><option>BOMB TABLE</option><option>谁是卧底</option><option>狼人杀</option><option>德州扑克</option>
+        </select>
+        <div class="seg" id="fstate" role="group" aria-label="按状态筛选">
+          <button class="on" data-st="" type="button">全部</button>
+          <button data-st="playing" type="button">进行中</button>
+          <button data-st="waiting" type="button">等待中</button>
+          <button data-st="ended" type="button">已结束</button>
+        </div>
+      </div>
+      <div id="rooms"></div>
+    </section>
+
+    <!-- 详情 / 权力区 -->
+    <section class="panel detail" id="detail">
+      <div class="phead"><h2>房间详情 / OVERSIGHT</h2><span class="meta" id="d-id">BT-0417</span></div>
+      <h3>公开状态</h3>
+      <div class="kv"><span>游戏</span><b id="d-game">BOMB TABLE</b></div>
+      <div class="kv"><span>阶段</span><b id="d-phase">审问</b></div>
+      <div class="kv"><span>玩家</span><b id="d-players">4 / 6</b></div>
+      <div class="kv"><span>牌堆</span><b id="d-deck">17 张</b></div>
+
+      <h3>私有信息揭示 <span style="font-family:var(--font-mono);font-size:10px;color:var(--red)">PRIVATE · level=masked</span></h3>
+      <div class="reveal masked" id="secret" role="button" tabindex="0" aria-label="申请揭示 raw 档私有信息">
+        <div class="masked-line"><span>零和 (p1) · secret</span><b>{"redacted":true,"kind":"role"}</b></div>
+        <div class="masked-line"><span>零和 (p1) · 手牌 / 骰子</span><b>handCount:1 · diceCount:0</b></div>
+        <div class="masked-line"><span>弈者 (p3) · thought</span><b>最近 1 段 · 截断 120 字</b></div>
+        <div class="masked-line"><span>asks[].context</span><b>{"redacted":true}</b></div>
+        <div class="masked-line"><span>token</span><b>不返回（仅 displayCode 末 4 位）</b></div>
+      </div>
+      <div class="reveal-hint">点击申请 raw 档 → 弹窗填写 reason → 服务端写审计后返回。锁定状态下不请求 raw，也不在 DOM 中存放明文。<br>本稿 masked 内容由服务端示意，静态演示无真实接口。</div>
+      <div class="warnbox">⚠ 揭示私有信息会破坏牌局公平。<b>仅用于仲裁与复盘</b>；raw 档需 <code>reason</code> 且会话新鲜（5 分钟内），每次查看写快照 + 审计。</div>
+
+      <h3>强制干预 <span style="font-family:var(--font-mono);font-size:10px;color:var(--ink-45)">POST .../intervene</span></h3>
+      <div class="ops">
+        <button class="btn danger" data-op="abort">强制结束 <small style="opacity:.7">abort</small></button>
+        <button class="btn kick" data-op="kick">踢出玩家 <small style="opacity:.7">kick</small></button>
+        <button class="btn" data-op="advance-phase">跳到下一阶段 <small style="opacity:.7">advance-phase</small></button>
+      </div>
+      <div class="warnbox" style="background:rgba(138,100,16,.1);border-color:rgba(138,100,16,.3);color:var(--c-warn)">所有干预须<b>二次确认 + reason 非空</b>并勾选后果知悉；后端强制校验，前端勾选不能替代。按角色与房间状态启用/禁用。</div>
+    </section>
+
+    <!-- 审计 -->
+    <section class="panel" style="grid-column:1/-1">
+      <div class="phead"><h2>审计记录 / AUDIT TRAIL</h2><span class="meta">append-only · sha256 哈希链 · seal = hash 前 8 位</span></div>
+      <div id="audit">
+        <div class="audit"><span class="t">今日 14:02:31</span> <span class="who">demo_operator</span> admin.godview.read(raw) <b>K7M2QX</b> · reason「仲裁复盘」 <span class="seal">seal 9f86d0a1</span></div>
+        <div class="audit"><span class="t">今日 13:47:08</span> <span class="who">system</span> 房间 <b>K7M2QX</b> 自然结束 <span class="seal">seal 00000000</span></div>
+        <div class="audit"><span class="t">今日 13:20:55</span> <span class="who">demo_operator</span> admin.room.intervene(abort) <b>K7M2QX</b> · reason「超时僵局」 <span class="seal">seal 4c1ba92e</span></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
+  <div class="sheet" id="sheet">
+    <h2 id="m-title">二次确认</h2>
+    <p id="m-desc">你正在执行破坏性操作。</p>
+    <div class="reason-box">
+      <label for="m-reason">REASON / 操作理由（必填，写入审计）</label>
+      <textarea id="m-reason" placeholder="例如：牌局卡死超过 10 分钟，人工结束"></textarea>
+      <div class="audit-tip">本次查看 / 操作将被记录，包含 who / when / target / before / after / reason。</div>
+    </div>
+    <label class="confirm-check"><input type="checkbox" id="m-check"> 我知悉此操作不可撤销，并将写入审计</label>
+    <div class="sheet__ops">
+      <button class="btn" id="m-cancel" type="button">取消</button>
+      <button class="btn danger" id="m-ok" type="button" disabled>确认执行</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s)};
+  // 字段对齐 GET /admin/rooms：roomId 为真实键，displayCode 为展示别名；uiState 已把 lobby→waiting
+  var ROOMS=[
+    {roomId:'K7M2QX',displayCode:'BT-0417',gameTitle:'BOMB TABLE',status:'playing',uiState:'playing',phase:'vote',filled:4,seats:6,createdAt:'2026-11-26T14:00:00Z'},
+    {roomId:'K7M2QY',displayCode:'BT-0416',gameTitle:'谁是卧底',status:'playing',uiState:'playing',phase:'describe',filled:6,seats:8,createdAt:'2026-11-26T13:58:00Z'},
+    {roomId:'K7M2QZ',displayCode:'BT-0415',gameTitle:'狼人杀',status:'lobby',uiState:'waiting',phase:'night',filled:6,seats:6,createdAt:'2026-11-26T13:51:00Z'},
+    {roomId:'K7M2R2',displayCode:'BT-0414',gameTitle:'德州扑克',status:'playing',uiState:'playing',phase:'bet',filled:5,seats:6,createdAt:'2026-11-26T13:44:00Z'},
+    {roomId:'K7M2R3',displayCode:'BT-0413',gameTitle:'BOMB TABLE',status:'ended',uiState:'ended',phase:'over',filled:2,seats:6,createdAt:'2026-11-26T13:36:00Z'},
+    {roomId:'K7M2R4',displayCode:'BT-0412',gameTitle:'UNO',status:'ended',uiState:'ended',phase:'over',filled:4,seats:6,createdAt:'2026-11-26T13:20:00Z'}
+  ];
+  var GLYPH={'BOMB TABLE':'爆','谁是卧底':'卧','狼人杀':'狼','德州扑克':'牌','UNO':'U'};
+  var OP={abort:'强制结束房间',kick:'踢出玩家','advance-phase':'跳到下一阶段'};
+  var cur=ROOMS[0], mode=null, pending=null, filter={q:'',game:'',st:''};
+  // masked 档内容：只有 redacted 标记与计数，不含 secret.data / 手牌数组 / 完整 context
+  var MASKED='<div class="masked-line"><span>零和 (p1) · secret</span><b>{"redacted":true,"kind":"role"}</b></div>'+
+    '<div class="masked-line"><span>零和 (p1) · 手牌 / 骰子</span><b>handCount:1 · diceCount:0</b></div>'+
+    '<div class="masked-line"><span>弈者 (p3) · thought</span><b>最近 1 段 · 截断 120 字</b></div>'+
+    '<div class="masked-line"><span>asks[].context</span><b>{"redacted":true}</b></div>'+
+    '<div class="masked-line"><span>token</span><b>不返回（仅 displayCode 末 4 位）</b></div>';
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+  function toast(m){var t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show')},2200)}
+  function hhmm(t){return t.slice(11,16)}
+
+  function renderRooms(){
+    var list=ROOMS.filter(function(r){
+      var q=filter.q.toLowerCase();
+      return (!q||r.displayCode.toLowerCase().indexOf(q)>=0||r.roomId.toLowerCase().indexOf(q)>=0)&&
+             (!filter.game||r.gameTitle===filter.game)&&(!filter.st||r.uiState===filter.st);
+    });
+    if(!list.length){$('#rooms').innerHTML='<div class="empty">没有符合条件的房间</div>';return}
+    $('#rooms').innerHTML=list.map(function(r){
+      var badge=r.uiState==='playing'?'<span class="badge play">进行中</span>':
+                r.uiState==='waiting'?'<span class="badge wait">等待中</span>':'<span class="badge end">已结束</span>';
+      return '<div class="room'+(r===cur?' on':'')+'" data-id="'+r.roomId+'" role="button" tabindex="0">'+
+        '<div class="room__glyph">'+GLYPH[r.gameTitle]+'</div><div>'+
+        '<div class="room__id">'+r.displayCode+'</div><div class="room__game">'+esc(r.gameTitle)+'</div>'+
+        '<div class="room__meta">roomId '+r.roomId+' · '+hhmm(r.createdAt)+'</div></div>'+
+        '<div class="room__right">'+badge+'<div class="room__n">'+r.filled+'/'+r.seats+' 人</div></div></div>';
+    }).join('');
+  }
+  $('#rooms').addEventListener('click',function(e){var el=e.target.closest('.room');if(el)select(el.dataset.id)});
+  $('#rooms').addEventListener('keydown',function(e){
+    if(e.key==='Enter'||e.key===' '){var el=e.target.closest('.room');if(el){e.preventDefault();select(el.dataset.id)}}
+  });
+  function select(id){
+    cur=ROOMS.filter(function(r){return r.roomId===id})[0];
+    $('#d-id').textContent=cur.displayCode+' · '+cur.roomId;
+    $('#d-game').textContent=cur.gameTitle;
+    $('#d-phase').textContent=cur.uiState==='playing'?'审问 / '+cur.phase:cur.uiState==='waiting'?'等待入席':'已结束';
+    $('#d-players').textContent=cur.filled+' / '+cur.seats;
+    $('#d-deck').textContent=cur.uiState==='playing'?'17 张（publicState.deckLeft）':'—';
+    // 切换房间即回到 masked；raw 永不随轮询自动刷新
+    var s=$('#secret');s.className='reveal masked';s.innerHTML=MASKED;
+    renderRooms();
+  }
+
+  $('#q').addEventListener('input',function(){filter.q=this.value;renderRooms()});
+  $('#fgame').addEventListener('change',function(){filter.game=this.value;renderRooms()});
+  $('#fstate').addEventListener('click',function(e){
+    var b=e.target.closest('button');if(!b)return;
+    [].forEach.call(this.children,function(x){x.classList.toggle('on',x===b)});
+    filter.st=b.dataset.st;renderRooms();
+  });
+
+  // raw 揭示：必须走 reason 弹窗显式触发，锁定态不请求 raw、DOM 不存明文
+  function askReveal(){openModal('reveal',null)}
+  $('#secret').addEventListener('click',askReveal);
+  $('#secret').addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();askReveal()}});
+
+  function openModal(m,trigger){
+    mode=m;pending=trigger?trigger.dataset.op:null;
+    $('#m-check').parentElement.hidden=(m==='reveal');
+    $('#m-reason').value='';$('#m-check').checked=false;validateModal();
+    if(m==='reveal'){
+      $('#m-title').textContent='申请揭示私有信息 · raw';
+      $('#m-desc').innerHTML='即将请求 <span class="target">GET /admin/rooms/'+cur.roomId+'/godview?level=raw</span>。仅仲裁与复盘可用，会话需 5 分钟内活跃。';
+      $('#m-ok').textContent='确认揭示并记录';
+    }else{
+      $('#m-title').textContent=OP[pending]+' · 二次确认';
+      $('#m-desc').innerHTML='你正在对 <span class="target">'+cur.displayCode+'（'+cur.roomId+'）</span> 执行「'+OP[pending]+'」。不可撤销，且写入审计。';
+      $('#m-ok').textContent='确认执行';
+    }
+    if(trigger){
+      var r=trigger.getBoundingClientRect();
+      $('#sheet').style.transformOrigin=(r.left+r.width/2)+'px '+r.top+'px';
+    }
+    $('#sheet').animate([{opacity:0,transform:'scale(.9) translateY(20px)'},{opacity:1,transform:'none'}],
+      {duration:300,easing:'cubic-bezier(.22,1.2,.36,1)'});
+    $('#modal').classList.add('show');
+    $('#m-reason').focus();
+  }
+  function validateModal(){
+    var hasReason=$('#m-reason').value.trim().length>0;
+    $('#m-ok').disabled=!hasReason||(mode==='intervene'&&!$('#m-check').checked);
+  }
+  $('#m-reason').addEventListener('input',validateModal);
+  $('#m-check').addEventListener('change',validateModal);
+
+  document.addEventListener('click',function(e){
+    var b=e.target.closest('[data-op]');if(!b)return;openModal('intervene',b);
+  });
+  function closeModal(){$('#modal').classList.remove('show')}
+  $('#m-cancel').addEventListener('click',closeModal);
+  $('#modal').addEventListener('click',function(e){if(e.target===this)closeModal()});
+  document.addEventListener('keydown',function(e){if(e.key==='Esc')closeModal()});
+  $('#m-ok').addEventListener('click',function(){
+    var reason=$('#m-reason').value.trim();
+    if(!reason)return; // 后端同样强制校验 reason 非空，缺失返回 400
+    closeModal();
+    if(mode==='reveal'){
+      var s=$('#secret');s.className='reveal raw';
+      // 静态稿不内嵌任何真实 secret.data；真实值由服务端 raw 响应返回
+      s.innerHTML='<div class="masked-line"><span>零和 (p1) · secret</span><b>&lt;服务端返回 kind/data&gt;</b></div>'+
+        '<div class="masked-line"><span>零和 (p1) · 手牌</span><b>&lt;服务端返回 hand[]&gt;</b></div>'+
+        '<div class="masked-line"><span>弈者 (p3) · 完整思考链</span><b>&lt;服务端返回 thoughts[]&gt;</b></div>'+
+        '<div class="masked-line"><span>asks[].context</span><b>&lt;服务端返回完整上下文&gt;</b></div>';
+      toast('raw 已返回 · 快照 + 审计已写入');
+      addAudit('demo_operator','admin.godview.read(raw) '+cur.roomId+' · reason「'+reason+'」','visibilityLevel=raw');
+    }else{
+      var act=OP[pending];
+      toast(act+' · 已执行并审计（action='+pending+'）');
+      addAudit('demo_operator','admin.room.intervene('+pending+') '+cur.roomId+' · reason「'+reason+'」','before=playing → after=ended');
+    }
+  });
+
+  function addAudit(who,what,detail){
+    var now=new Date();
+    var ts=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+    var seal=Math.random().toString(16).slice(2,10);
+    var d=document.createElement('div');d.className='audit';
+    d.innerHTML='<span class="t">今日 '+ts+'</span> <span class="who">'+esc(who)+'</span> '+esc(what)+
+      (detail?' <span style="color:var(--ink-45)">'+esc(detail)+'</span>':'')+' <span class="seal">seal '+seal+'</span>';
+    $('#audit').insertBefore(d,$('#audit').firstChild);
+  }
+
+  select(cur.roomId);
+})();
+</script>
+</body>
+</html>

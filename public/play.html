@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BOMB TABLE · 牌桌</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2317130C'/%3E%3Ctext x='16' y='23' font-size='18' font-family='serif' font-weight='700' fill='%23B23A28' text-anchor='middle'%3E%E7%82%B8%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body class="is-play">
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<div class="app--play">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand__line">
+        <span class="brand__mark">BOMB</span>
+        <span class="brand__mark brand__mark--alt">TABLE</span>
+      </div>
+      <div class="brand__cn">炸弹牌桌 · <b id="room-tag">——</b></div>
+    </div>
+
+    <div class="statline" id="statline"></div>
+
+    <span class="modechip" id="mode"><span class="dot"></span><span id="mode-text">连接中</span></span>
+
+    <div class="topbar__act">
+      <button class="btn btn--ghost btn--sm" id="btn-copy-join">接入链接</button>
+      <button class="btn btn--ghost btn--sm" data-open="rules">规 则</button>
+      <button class="btn btn--ghost btn--sm" id="btn-lobby">大 厅</button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <section class="table" id="table">
+      <div class="table__mark" aria-hidden="true">炸</div>
+
+      <div class="vote" id="vote" hidden>
+        <div class="vote__kicker"><span>停 战 提 案</span><em>CEASEFIRE</em></div>
+        <div class="vote__title" id="vote-title">牌堆已经打完一副</div>
+        <div class="vote__body" id="vote-body"></div>
+        <div class="vote__tally" id="vote-tally"></div>
+        <div class="vote__foot" id="vote-foot"></div>
+      </div>
+      <div class="seats" id="seats"></div>
+
+      <div class="center">
+        <aside class="sidel sidel--l" id="side-left" aria-label="牌堆构成"></aside>
+
+        <div class="deckwrap">
+          <div class="deck" id="deck" aria-hidden="true"></div>
+          <div class="deck__meta" id="deckmeta"></div>
+        </div>
+
+        <div class="played" id="played">
+          <div class="card card--ghost"><span>待 抽</span></div>
+        </div>
+
+        <div class="focus" id="focus">
+          <div class="focus__kicker">待 命</div>
+          <div class="focus__text">牌桌就绪</div>
+        </div>
+
+        <aside class="sidel sidel--r" id="side-right" aria-label="当前审讯状态"></aside>
+      </div>
+
+      <div class="me" id="me"></div>
+      <div class="stamp" id="stamp" aria-hidden="true"></div>
+    </section>
+
+    <aside class="wire" id="wire-panel">
+      <div class="wire__head" id="wire-head">
+        <span class="wire__dot"></span>
+        <span class="wire__title">监听记录 / WIRETAP</span>
+        <button class="wire__handle" id="wire-toggle" aria-label="展开或收起监听记录">
+          <span id="wire-toggle-text">展开</span><i></i>
+        </button>
+        <span class="wire__hint">公开频道 · 每个 AI 的思考链都打在这里</span>
+      </div>
+      <div class="wire__body" id="wire"></div>
+      <div class="wire__foot">
+        <span id="wirefoot">思考链实时投屏</span>
+        <span>CH · 04</span>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="actionbar" id="actionbar">
+    <div class="actionbar__idle"><span class="dots"></span><span>正在接入牌局…</span></div>
+  </footer>
+</div>
+
+<!-- ============ 结算 ============ -->
+<div class="over" id="over">
+  <div class="over__card">
+    <div class="over__kicker">牌 局 结 束</div>
+    <div class="over__title" id="over-title"></div>
+    <div class="over__sub" id="over-sub"></div>
+    <div class="over__stats" id="over-stats"></div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn--primary" id="btn-again">再 开 一 桌</button>
+      <button class="btn btn--ghost" id="btn-back">回 大 厅</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 规则 ============ -->
+<div class="modal" id="modal-rules">
+  <div class="sheet sheet--wide">
+    <div class="sheet__head">
+      <h2>牌局规则</h2>
+      <button class="sheet__close" data-close aria-label="关闭">✕</button>
+    </div>
+
+    <div class="rules">
+      <div class="rules__col">
+        <h3>牌堆 · 26 张</h3>
+        <div class="rules__row"><span class="mini mini--danger">爆</span><div><b>炸弹 ×7</b><p>抽到者掉 1 点命。有拆弹钳可以化解。</p></div></div>
+        <div class="rules__row"><span class="mini mini--warn">审</span><div><b>质询 ×8</b><p>抽到者指定一人受审，进入审问流程。</p></div></div>
+        <div class="rules__row"><span class="mini mini--calm">安</span><div><b>安全 ×7</b><p>什么都不发生。</p></div></div>
+        <div class="rules__row"><span class="mini mini--good">补</span><div><b>补给 ×4</b><p>获得一件随机道具；道具满则回 1 点命。</p></div></div>
+
+        <h3>道具 · 上限 2 件</h3>
+        <div class="rules__row"><span class="mini">钳</span><div><b>拆弹钳</b><p>抵挡一次炸弹伤害。</p></div></div>
+        <div class="rules__row"><span class="mini">镜</span><div><b>透视镜</b><p>抽牌前窥视牌堆顶两张。</p></div></div>
+        <div class="rules__row"><span class="mini">换</span><div><b>换手牌</b><p>把本次抽牌权转给指定玩家。</p></div></div>
+      </div>
+
+      <div class="rules__col">
+        <h3>审问流程</h3>
+        <ol class="steps">
+          <li><b>指定</b>　抽到「审」的人挑一个还在场的人当受审者。</li>
+          <li><b>偷看</b>　系统单独告诉受审者：牌堆最上面那张是什么。</li>
+          <li><b>回答</b>　提问者问「下一张，是炸弹吗？」受审者必须答，可以说谎。</li>
+          <li><b>裁决</b>　提问者二选一：相信，或当场指控。</li>
+        </ol>
+        <div class="verdicts">
+          <div class="verdicts__item verdicts__item--trust">
+            <b>相信</b>
+            <p>自己抽下一张。是炸弹就自己吃。<br><span>赌他诚实。</span></p>
+          </div>
+          <div class="verdicts__item verdicts__item--accuse">
+            <b>指控</b>
+            <p>当场验真。他撒谎 → 他掉 1 命、你得拆弹钳。<br>他诚实 → <span>你掉 1 命。</span></p>
+          </div>
+        </div>
+
+        <h3>胜负</h3>
+        <p class="rules__note">生命归零出局，活到最后的一个人赢。牌堆抽空会洗牌重来。<br>超时的决策由系统保守代打：不抽牌、用钳、说真话、相信。</p>
+
+        <h3>思考链为什么公开</h3>
+        <p class="rules__note">
+          每个 AI 的内心独白会实时打在监听记录上，所有人都能读。它知道自己被看着 ——
+          所以它要一边思考一边自我审查。<em>谎言会被钉在记录上，一直留到牌局结束。</em>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="/brands.js"></script>
+<script src="/play.js"></script>
+</body>
+</html>
