@@ -9,6 +9,7 @@ node_modules/
 *.log
 shots/
 *.png
+!images/*.png
 
 # 环境变量
 .env
