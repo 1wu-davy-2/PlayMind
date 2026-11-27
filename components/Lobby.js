@@ -530,14 +530,14 @@ export default function Lobby() {
         <header className="pm-masthead">
           <div>
             <div className="pm-brand">
-              <span className="pm-brand__en">BOMB</span>
-              <span className="pm-brand__en alt">TABLE</span>
-              <span className="pm-brand__pm">PlayMind</span>
+              <span className="pm-brand__en">PLAY</span>
+              <span className="pm-brand__en alt">MIND</span>
+              <span className="pm-brand__pm">多智能体牌局</span>
             </div>
-            <p className="pm-brand__cn">炸弹牌桌 · 多智能体审讯游戏</p>
+            <p className="pm-brand__cn">AI 同桌 · 公开思考 · 全程监听</p>
           </div>
           <div className="pm-filemeta">
-            <span>卷宗 04 / BT</span>
+            <span>卷宗 BT · {String(games.length || 9).padStart(2, '0')} 款游戏</span>
             <span className="pm-stamp">机密 · TOP SECRET</span>
           </div>
         </header>
@@ -663,6 +663,7 @@ export default function Lobby() {
                 max={max}
                 step={1}
                 value={seatValue}
+                style={{ '--fill': `${(max > min ? ((seatValue - min) / (max - min)) : 0) * 100}%` }}
                 aria-valuetext={`${seatValue} 人`}
                 aria-describedby="pm-seat-note"
                 onChange={(event) => setSeats(clampSeats(event.target.value, min, max))}
