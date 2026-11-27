@@ -1,7 +1,7 @@
 // POST /api/admin/login — 后门管理员登录。
 // 独立账号表 + 独立会话，与玩家 token 完全隔离；密码只存 bcrypt hash。
 // 首次无任何管理员时，按 ADMIN_USERNAME / ADMIN_PASSWORD 引导创建 root。
-import { json, readJson, preflight, clientIp } from '@/lib/http';
+import { json, readJson, preflight, clientIp, baseUrlOf } from '@/lib/http';
 import {
   ADMIN_SESSION_TTL_MS,
   hashPassword,
@@ -158,7 +158,14 @@ export async function POST(request) {
       role: admin.role,
       expiresAt: toIso(expiresAt),
     });
-    res.headers.append('Set-Cookie', sessionCookie(token, Math.floor(ADMIN_SESSION_TTL_MS / 1000)));
+    res.headers.append(
+      'Set-Cookie',
+      sessionCookie(
+        token,
+        Math.floor(ADMIN_SESSION_TTL_MS / 1000),
+        baseUrlOf(request).startsWith('https://'),
+      ),
+    );
     return res;
   } catch (error) {
     return errorResponse(error);

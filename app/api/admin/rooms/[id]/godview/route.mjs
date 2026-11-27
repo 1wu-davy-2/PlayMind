@@ -1,7 +1,7 @@
 // GET /api/admin/rooms/[id]/godview?level=masked|raw&reason=...
 // masked：viewer 及以上；raw：operator 及以上且必须填 reason。
 // 每次读取都写 godview_snapshots + audit_logs，且审计成功后才返回数据。
-import { json, preflight } from '@/lib/http';
+import { json, preflight, clientIp } from '@/lib/http';
 import { db } from '@/lib/db';
 import { adminGodview } from '@/lib/rooms';
 import {
@@ -9,7 +9,6 @@ import {
   errorResponse,
   requireAdmin,
   serializeGodview,
-  writeAudit,
 } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
@@ -39,30 +38,33 @@ export async function GET(request, ctx) {
 
     const data = await adminGodview(id, { level });
 
-    // 先留快照，再写审计；任一步失败都不返回数据
-    await db.saveGodviewSnapshot({
-      roomCode: id,
-      capturedBy: admin.id,
-      visibilityLevel: level,
-      publicState: data.publicState,
-      playersPrivate: data.players,
-      pendingAsks: data.asks,
-      thoughts: data.thoughts,
-      events: data.events,
-    });
-
-    await writeAudit({
-      admin,
-      session,
-      action: 'admin.godview.read',
-      targetType: 'room',
-      targetId: id,
-      after: {
-        level,
-        eventCount: Array.isArray(data.events) ? data.events.length : 0,
+    // 快照 + 审计一次事务写入；任一步失败都不返回数据
+    const ip = clientIp(request);
+    await db.recordGodviewRead({
+      snapshot: {
+        roomCode: id,
+        capturedBy: admin.id,
+        visibilityLevel: level,
+        publicState: data.publicState,
+        playersPrivate: data.players,
+        pendingAsks: data.asks,
+        thoughts: data.thoughts,
+        events: data.events,
       },
-      reason: reason || null,
-      request,
+      audit: {
+        actorId: admin.id,
+        actorUsername: admin.username,
+        sessionId: session.id,
+        action: 'admin.godview.read',
+        targetType: 'room',
+        targetId: id,
+        after: {
+          level,
+          eventCount: Array.isArray(data.events) ? data.events.length : 0,
+        },
+        reason: reason || null,
+        ipAddress: ip && ip !== 'unknown' ? ip : null,
+      },
     });
 
     return json(serializeGodview(data));

@@ -8,8 +8,28 @@
    ============================================================ */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 /* ---------------- 常量 ---------------- */
+
+// 牌桌座位环绕布局：中间是牌局，AI 玩家卡片分布在上/下/两侧
+const SEAT_SLOTS = {
+  1: ['top'],
+  2: ['top', 'bottom'],
+  3: ['top', 'bottom-left', 'bottom-right'],
+  4: ['top-left', 'top-right', 'bottom-left', 'bottom-right'],
+  5: ['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-right'],
+  6: ['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right'],
+  7: ['top-left', 'top-center', 'top-right', 'mid-left', 'mid-right', 'bottom-left', 'bottom-right'],
+  8: ['top-left', 'top-center', 'top-right', 'mid-left', 'mid-right', 'bottom-left', 'bottom-right', 'bottom-center'],
+  9: ['top-left', 'top-center', 'top-right', 'mid-left', 'mid-right', 'bottom-left', 'bottom-right', 'bottom-center', 'mid-left-2'],
+  10: ['top-left', 'top-center', 'top-right', 'mid-left', 'mid-right', 'bottom-left', 'bottom-right', 'bottom-center', 'mid-left-2', 'mid-right-2'],
+};
+
+function seatSlot(index, total) {
+  const list = SEAT_SLOTS[Math.max(1, Math.min(10, total))] || SEAT_SLOTS[6];
+  return list[index] || list[list.length - 1] || 'bottom';
+}
 
 const KIND_LABEL = {
   free: '自由发言',
@@ -97,6 +117,23 @@ const LOG_TAG = {
   system: '记录',
 };
 
+// 合并思考增量：同一段文本常被 /think 与 act.thought 重复投递，直接忽略尾部重复
+function mergeThought(prev, piece) {
+  const a = String(prev || '');
+  const b = String(piece || '');
+  if (!b) return a;
+  if (!a) return b;
+  if (a === b || a.endsWith(b)) return a;
+  if (b.startsWith(a)) return b.slice(-600);
+  return (a + b).slice(-600);
+}
+
+// WIRETAP 里的思考只展示尾部摘要，避免长文本刷屏
+function trimThought(text, n = 180) {
+  const s = String(text || '').replace(/\s+/g, ' ').trim();
+  return s.length > n ? '…' + s.slice(-n) : s;
+}
+
 const TEAM_CLASS = {
   red: 'tag--red',
   blue: 'tag--blue',
@@ -139,6 +176,22 @@ const DIE_MAP = {
   5: [0, 2, 4, 6, 8],
   6: [0, 2, 3, 5, 6, 8],
 };
+
+// 终局礼花：确定性分布，避免每次渲染跳动
+const CONFETTI = (() => {
+  const out = [];
+  for (let i = 0; i < 18; i += 1) {
+    const a = (i * 137) % 360;
+    const r = 46 + ((i * 53) % 88);
+    out.push({
+      x: Math.round(Math.cos((a * Math.PI) / 180) * r),
+      y: Math.round(Math.sin((a * Math.PI) / 180) * r),
+      d: (i % 6) * 70,
+      s: 4 + (i % 3) * 2,
+    });
+  }
+  return out;
+})();
 
 const BRANDS = {
   deepseek: { name: 'DeepSeek', color: '#4D6BFE' },
@@ -354,6 +407,7 @@ function Typewriter({ text }) {
 /* ---------------- 组件 ---------------- */
 
 export default function TableClient({ roomId }) {
+  const router = useRouter();
   const [token, setToken] = useState('');
   const [hostToken, setHostToken] = useState('');
   const [tokenInput, setTokenInput] = useState('');
@@ -376,14 +430,27 @@ export default function TableClient({ roomId }) {
   const [connected, setConnected] = useState(false);
   const [tokenInvalid, setTokenInvalid] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
+  const [roomMissing, setRoomMissing] = useState(false);
 
   const [logs, setLogs] = useState([]);
   const logKeysRef = useRef(new Set());
   const logBoxRef = useRef(null);
   const logStickRef = useRef(true);
+  const [thoughtOpen, setThoughtOpen] = useState(true);
 
   const [think, setThink] = useState({});
   const thinkRef = useRef({});
+
+  // 思考进 WIRETAP：同一玩家同一 ask 只保留一条 live 条目
+  const liveThinkRef = useRef({});
+  const liveTimerRef = useRef({});
+  const lastFinalRef = useRef({});
+
+  // 玩家 HP 变化浮字 / 印章震动
+  const hpFxTimerRef = useRef(null);
+  const prevHpRef = useRef({});
+  const [hpFx, setHpFx] = useState({});
+  const [shake, setShake] = useState(0);
 
   const [fx, setFx] = useState(null);
   const fxRef = useRef(null);
@@ -415,6 +482,17 @@ export default function TableClient({ roomId }) {
   }, []);
 
   useEffect(() => () => clearTimeout(toastTimer.current), []);
+
+  // 卸载时清掉思考固化定时器与 HP 浮字定时器
+  useEffect(
+    () => () => {
+      Object.keys(liveTimerRef.current).forEach((pid) => clearTimeout(liveTimerRef.current[pid]));
+      liveTimerRef.current = {};
+      clearTimeout(hpFxTimerRef.current);
+    },
+    []
+  );
+
 
   // 身份：localStorage 优先，URL ?token= 覆盖并写回
   useEffect(() => {
@@ -456,6 +534,62 @@ export default function TableClient({ roomId }) {
     });
   }, []);
 
+  /* ---------- 思考条目（live 流式 → 固化） ---------- */
+
+  // 按 key 就地更新或新增一条思考记录（不占用 logKeysRef 的去重键）
+  const upsertThought = useCallback((pid, text, at, key, final) => {
+    setLogs((prev) => {
+      const idx = prev.findIndex((x) => x.key === key);
+      if (idx >= 0) {
+        const next = prev.slice();
+        next[idx] = Object.assign({}, next[idx], {
+          text,
+          at,
+          t: 'thought',
+          playerId: pid,
+          live: !final,
+        });
+        return next;
+      }
+      const next = prev.concat([{ key, at, text, t: 'thought', playerId: pid, live: !final }]);
+      return next.length > 260 ? next.slice(next.length - 260) : next;
+    });
+  }, []);
+
+  // playerId + 当前 askId（拿不到时用轮次 + 30s 时间窗）做 key
+  const thoughtKeyOf = useCallback((pid) => {
+    const st = pubRef.current || {};
+    const pend = Array.isArray(st.pending) ? st.pending : [];
+    let askId = '';
+    for (let i = 0; i < pend.length; i += 1) {
+      if (pend[i] && pend[i].playerId === pid && pend[i].id) {
+        askId = String(pend[i].id);
+        break;
+      }
+    }
+    const round = st.round == null ? '' : String(st.round);
+    const bucket = Math.floor(Date.now() / 30000);
+    return 'think|' + pid + '|' + (askId || 'r' + round + '|' + bucket);
+  }, []);
+
+  // 把该玩家的 live 条目固化（thought-end / 提交 / 超时 / 静默 2.5s）
+  const finalizeThought = useCallback(
+    (pid) => {
+      const rec = liveThinkRef.current[pid];
+      if (!rec) return;
+      delete liveThinkRef.current[pid];
+      if (liveTimerRef.current[pid]) {
+        clearTimeout(liveTimerRef.current[pid]);
+        delete liveTimerRef.current[pid];
+      }
+      const whole = String(rec.text || '').trim();
+      if (!whole) return;
+      lastFinalRef.current[pid] = whole;
+      upsertThought(pid, '心想：' + trimThought(whole), rec.at || Date.now(), rec.key, true);
+    },
+    [upsertThought]
+  );
+
   /* ---------- 状态应用 ---------- */
 
   const applyState = useCallback(
@@ -463,11 +597,34 @@ export default function TableClient({ roomId }) {
       if (!st || typeof st !== 'object') return;
       const prev = pubRef.current;
       if (prev && (prev.round !== st.round || prev.phase !== st.phase)) {
+        Object.keys(liveThinkRef.current).forEach((pid) => finalizeThought(pid));
         thinkRef.current = {};
         setThink({});
       }
       pubRef.current = st;
       setPub(st);
+
+      // HP 变化浮字（仅同 id 连续快照之间存在差值时触发）
+      const list = Array.isArray(st.players) ? st.players : [];
+      const hpNow = {};
+      for (let i = 0; i < list.length; i += 1) {
+        const p = list[i];
+        if (p && p.id && p.hp != null) hpNow[p.id] = Number(p.hp);
+      }
+      const before = prevHpRef.current;
+      const stamp = Date.now();
+      const marks = {};
+      Object.keys(hpNow).forEach((pid) => {
+        if (before[pid] != null && before[pid] !== hpNow[pid]) {
+          marks[pid] = { d: hpNow[pid] - before[pid], k: stamp };
+        }
+      });
+      prevHpRef.current = hpNow;
+      if (Object.keys(marks).length) {
+        setHpFx((cur) => Object.assign({}, cur, marks));
+        clearTimeout(hpFxTimerRef.current);
+        hpFxTimerRef.current = setTimeout(() => setHpFx({}), 1700);
+      }
 
       if (Array.isArray(st.log)) {
         for (let i = 0; i < st.log.length; i += 1) {
@@ -491,7 +648,7 @@ export default function TableClient({ roomId }) {
         setAsk(null);
       }
     },
-    [addLog]
+    [addLog, finalizeThought]
   );
 
   /* ---------- 事件处理 ---------- */
@@ -512,6 +669,7 @@ export default function TableClient({ roomId }) {
       if (fxObj && FX_LABELS[fxObj.kind]) {
         if (!(fxObj.kind === 'phase' && !e.text)) {
           setFx({ key: String(e.seq || '') + '-' + Date.now(), kind: fxObj.kind, text: String(e.text || '') });
+          if (fxObj.kind === 'stamp' || fxObj.kind === 'end') setShake((n) => n + 1);
         }
       }
 
@@ -526,13 +684,35 @@ export default function TableClient({ roomId }) {
         }
       }
 
-      // 思考分段
+      // 思考分段：thought rail 打字机 + WIRETAP 的 live 条目同步增长
       if (e.t === 'thought' && e.playerId && e.delta) {
         const pid = e.playerId;
-        let next = (thinkRef.current[pid] || '') + String(e.delta);
-        if (next.length > 600) next = next.slice(-600);
+        const piece = String(e.delta);
+        const next = mergeThought(thinkRef.current[pid] || '', piece);
         thinkRef.current = Object.assign({}, thinkRef.current, { [pid]: next });
         setThink(thinkRef.current);
+
+        let rec = liveThinkRef.current[pid];
+        if (!rec || !rec.open) {
+          rec = { key: thoughtKeyOf(pid), at: Number(e.at) || Date.now(), text: '', open: true };
+          liveThinkRef.current[pid] = rec;
+        }
+        rec.text = mergeThought(rec.text, piece);
+        rec.last = Date.now();
+        upsertThought(pid, trimThought(rec.text), rec.at, rec.key, false);
+
+        if (liveTimerRef.current[pid]) clearTimeout(liveTimerRef.current[pid]);
+        liveTimerRef.current[pid] = setTimeout(() => {
+          const cur = liveThinkRef.current[pid];
+          // 历史重放里的旧思考：固化进日志，但不再占用 thought rail
+          if (cur && Date.now() - (cur.last || cur.at || 0) > 12000) {
+            const copy = Object.assign({}, thinkRef.current);
+            delete copy[pid];
+            thinkRef.current = copy;
+            setThink(copy);
+          }
+          finalizeThought(pid);
+        }, 2500);
       }
 
       if (e.t === 'thought-end' && e.playerId) {
@@ -542,9 +722,20 @@ export default function TableClient({ roomId }) {
         delete copy[pid];
         thinkRef.current = copy;
         setThink(copy);
-        if (whole) {
-          addLog({ t: 'thought', playerId: pid, text: '心想：' + whole, at: e.at || Date.now() });
+        if (liveThinkRef.current[pid]) {
+          // 已有 live 条目：就地固化，不再重复写一条
+          finalizeThought(pid);
+        } else if (whole) {
+          const lf = lastFinalRef.current[pid] || '';
+          if (!lf || lf.slice(-whole.length) !== whole) {
+            addLog({ t: 'thought', playerId: pid, text: '心想：' + trimThought(whole), at: e.at || Date.now() });
+          }
         }
+      }
+
+      // 超时 / 系统代打 / 该玩家发言 → 该玩家的 live 思考就地固化
+      if (e.playerId && (e.t === 'timeout' || e.t === 'say' || e.t === 'ask-wait' || e.t === 'error')) {
+        finalizeThought(e.playerId);
       }
 
       // 我的 ask
@@ -554,6 +745,16 @@ export default function TableClient({ roomId }) {
           const a = list[i];
           if (!a || !a.id) continue;
           if (a.deadline && Number(a.deadline) < Date.now() - 2000) continue;
+          // 新 ask = 新回合：固化上一轮思考并清空输入缓冲，避免多轮文本叠加
+          if (a.playerId) {
+            if (liveThinkRef.current[a.playerId]) finalizeThought(a.playerId);
+            if (thinkRef.current[a.playerId]) {
+              const cleared = Object.assign({}, thinkRef.current);
+              delete cleared[a.playerId];
+              thinkRef.current = cleared;
+              setThink(cleared);
+            }
+          }
           if (myPidRef.current && a.playerId === myPidRef.current) {
             if (!askRef.current || askRef.current.id !== a.id) {
               askRef.current = a;
@@ -567,7 +768,7 @@ export default function TableClient({ roomId }) {
 
       if (e.t === 'state' && e.state) applyState(e.state);
     },
-    [addLog, applyState]
+    [addLog, applyState, finalizeThought, thoughtKeyOf, upsertThought]
   );
 
   const handleEvents = useCallback(
@@ -584,7 +785,9 @@ export default function TableClient({ roomId }) {
         applyEvent(ev);
       }
       const top = Number(data && data.maxSeq);
-      if (isFinite(top) && top > seq) seq = top;
+      // 刷新后从 since=0 回填：本次取满 200 条上限说明还有更早/更新的事件在路上，
+      // 先不跳到 top，下一轮接着取，避免刷新后丢失最近的思考记录。
+      if (isFinite(top) && top > seq && evs.length < 200) seq = top;
       if (seq > maxSeqRef.current) maxSeqRef.current = seq;
     },
     [applyEvent, applyState]
@@ -597,9 +800,10 @@ export default function TableClient({ roomId }) {
     let timer = null;
     let fails = 0;
     let running = false;
+    let stopped = false;
 
     const tick = async () => {
-      if (cancelled) return;
+      if (cancelled || stopped) return;
       if (typeof document !== 'undefined' && document.hidden) {
         timer = setTimeout(tick, 1000);
         return;
@@ -614,7 +818,17 @@ export default function TableClient({ roomId }) {
           '/api/rooms/' + encodeURIComponent(roomId) + '/events?' + qs.toString(),
           { cache: 'no-store', headers: { Accept: 'application/json' } }
         );
-        if (!res.ok) throw new Error('HTTP ' + res.status);
+        if (!res.ok) {
+          if (res.status === 404) {
+            // 房间不存在/已清理：停止轮询，避免无意义地打服务端
+            stopped = true;
+            setRoomMissing(true);
+            setConnected(false);
+            setReconnecting(false);
+            return;
+          }
+          throw new Error('HTTP ' + res.status);
+        }
         const data = await res.json();
         if (cancelled) return;
         fails = 0;
@@ -629,7 +843,7 @@ export default function TableClient({ roomId }) {
         }
       } finally {
         running = false;
-        if (!cancelled) {
+        if (!cancelled && !stopped) {
           const delay = fails ? Math.min(8000, 1000 * Math.pow(1.7, Math.min(fails - 1, 4))) : 1000;
           timer = setTimeout(tick, delay);
         }
@@ -640,7 +854,7 @@ export default function TableClient({ roomId }) {
 
     const onVisibility = () => {
       if (typeof document === 'undefined') return;
-      if (!document.hidden) {
+      if (!document.hidden && !stopped) {
         clearTimeout(timer);
         if (!running) tick();
       }
@@ -676,6 +890,11 @@ export default function TableClient({ roomId }) {
         );
         const j = await res.json().catch(() => null);
         if (cancelled) return;
+        if (res.status === 404) {
+          stopped = true;
+          setRoomMissing(true);
+          return;
+        }
         if (res.status === 403) {
           stopped = true;
           setTokenInvalid(true);
@@ -758,13 +977,8 @@ export default function TableClient({ roomId }) {
     if (!el || !fx) return;
     try {
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-      el.animate(
-        [
-          { opacity: 0, transform: 'translateY(-6px)' },
-          { opacity: 1, transform: 'none' },
-        ],
-        { duration: 220, easing: 'ease-out' }
-      );
+      // 只做透明度交接，位移交给 CSS（避免覆盖居中 transform）
+      el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: 'ease-out' });
     } catch (e) {
       /* ignore */
     }
@@ -861,6 +1075,13 @@ export default function TableClient({ roomId }) {
     setTokenInvalid(false);
     logKeysRef.current = new Set();
     setLogs([]);
+    Object.keys(liveTimerRef.current).forEach((pid) => clearTimeout(liveTimerRef.current[pid]));
+    liveTimerRef.current = {};
+    liveThinkRef.current = {};
+    lastFinalRef.current = {};
+    prevHpRef.current = {};
+    setHpFx({});
+    setShake(0);
     thinkRef.current = {};
     setThink({});
     setSubmitted('');
@@ -906,7 +1127,21 @@ export default function TableClient({ roomId }) {
       askRef.current = null;
       setAsk(null);
       setSubmitted('');
-      showToast('已强制结束本局');
+      showToast('已强制结束本局，返回大厅…');
+
+      // 强制结束后回到大厅，并清掉本房间的房主 / 玩家凭据
+      if (typeof window !== 'undefined') {
+        try {
+          window.localStorage.removeItem('bt.host.' + roomId);
+          window.localStorage.removeItem('bt_host_' + roomId);
+          window.localStorage.removeItem('bt.token.' + roomId);
+          window.localStorage.removeItem('bt_token_' + roomId);
+        } catch (err) {
+          /* ignore */
+        }
+        // 立即返回大厅（后台标签页里 setTimeout 可能被浏览器节流）
+        router.push('/');
+      }
     } catch (e) {
       showToast('强制结束失败：' + ((e && e.message) || '网络错误'));
     }
@@ -1000,7 +1235,7 @@ export default function TableClient({ roomId }) {
 
   /* ---------- 渲染：玩家 ---------- */
 
-  const rosterCard = (p) => {
+  const rosterCard = (p, idx) => {
     const isAsk = ids.indexOf(p.id) >= 0;
     const isCurrent = st.turnPlayerId === p.id;
     const isDead = p.alive === false;
@@ -1034,14 +1269,30 @@ export default function TableClient({ roomId }) {
     if (p.chips != null) stats.push(<span key="chips">筹码 {Number(p.chips)}</span>);
 
     return (
-      <div className={cls} style={{ '--hue': String(hueOf(p)) }} key={p.id}>
+      <div
+        className={cls}
+        style={{ '--hue': String(hueOf(p)), '--i': String(idx || 0) }}
+        key={p.id}
+      >
         <div className="pcard__top">
           <span className="pcard__glyph">{safeGlyph(p)}</span>
           <span className="online-dot" data-on={p.connected === false ? 'off' : 'on'} aria-hidden="true" />
           <span className="pcard__name">{p.name || '无名'}</span>
           {mine ? <span className="pcard__you">你</span> : null}
           <span className="pcard__kind">{KIND_TEXT[p.kind] || p.kind || '?'}</span>
+          <span className="pcard__pulse" aria-hidden="true" />
         </div>
+
+        {hpFx[p.id] ? (
+          <span
+            className={'hpfloat' + (hpFx[p.id].d < 0 ? ' is-down' : ' is-up')}
+            key={'hp' + hpFx[p.id].k}
+            aria-hidden="true"
+          >
+            {hpFx[p.id].d > 0 ? '+' : ''}
+            {hpFx[p.id].d}
+          </span>
+        ) : null}
 
         <div className="pcard__tags">
           {brand ? (
@@ -2102,7 +2353,10 @@ export default function TableClient({ roomId }) {
 
   let actionPrompt = '';
   let actionFoot = [];
-  if (!pub) {
+  if (roomMissing) {
+    actionPrompt = '房间不存在或已过期';
+    actionFoot.push('房间可能已被清理。返回大厅重新开桌。');
+  } else if (!pub) {
     actionPrompt = '正在接入牌局…';
     actionFoot.push('如果长时间没有反应，检查服务是否在运行。');
   } else if (ended) {
@@ -2140,7 +2394,10 @@ export default function TableClient({ roomId }) {
 
   let modeClass = 'modechip';
   let modeText = '连接中';
-  if (!token) {
+  if (roomMissing) {
+    modeClass += ' is-bad';
+    modeText = '房间失效';
+  } else if (!token) {
     modeText = '观战中';
   } else if (tokenInvalid) {
     modeClass += ' is-bad';
@@ -2167,6 +2424,11 @@ export default function TableClient({ roomId }) {
 
   const winnerName =
     typeof st.winner === 'string' ? st.winner : st.winner && st.winner.name ? st.winner.name : '';
+
+  const roundKey = String(st.round == null ? '' : st.round) + '|' + String(st.phase || '');
+  const turnName = st.turnPlayerId ? nameOf(st.turnPlayerId) : '';
+  const thinkerIds = Object.keys(think).filter((pid) => String(think[pid] || '').trim());
+  const thoughtHistory = logs.filter((x) => x.t === 'thought' && !x.live).slice(-14);
 
   return (
     <div className="tbl-root">
@@ -2250,39 +2512,48 @@ export default function TableClient({ roomId }) {
           </a>
         </header>
 
-        <main className="board">
-          {/* 左：座位 */}
-          <section className="panel roster" aria-label="在场人员">
-            <div className="panel__head">
-              <span className="panel__kicker">在场人员 / ROSTER</span>
-              <span className="panel__meta">
-                {players.length
-                  ? status === 'lobby'
-                    ? players.length + ' 人'
-                    : players.filter((p) => p.alive !== false).length + '/' + players.length + ' 存活'
-                  : '—'}
-              </span>
-            </div>
-            <div className="roster__body">
-              {players.length ? (
-                players.map((p) => rosterCard(p))
-              ) : (
-                <div className="roster__empty">还没有玩家入座。把加入链接发给朋友或 AI。</div>
-              )}
-            </div>
-            <div className="panel__foot">
-              <span>
-                {players.length ? '共 ' + players.length + ' 人 · ' + filled + ' 入座' : '等待牌桌数据'}
-                {!token ? ' · 观战' : ''}
-              </span>
-              <span>{connected ? 'LIVE' : 'OFFLINE'}</span>
-            </div>
-          </section>
-
-          {/* 中：牌局 */}
-          <section className="panel tabletop" aria-label="桌面">
+        <div className="playgrid">
+        <main className={'arena' + (players.length > 6 ? ' arena--crowded' : '')}>
+          <div className="arena__center">
+          {/* 中：牌桌（顶部行动条 + 桌面/特效层 + 底部操作区） */}
+          <section
+            className={'panel tabletop stage' + (shake ? (shake % 2 ? ' is-shake-a' : ' is-shake-b') : '')}
+            aria-label="桌面"
+          >
+            <span className="stage__sweep" key={'sweep-' + roundKey} aria-hidden="true" />
             <div className="tabletop__mark" aria-hidden="true">
               桌
+            </div>
+
+            <div className="turnbar">
+              <div className="turnbar__now">
+                <span className="turnbar__k">当前行动 / TURN</span>
+                <b className="turnbar__who">
+                  {ended ? '已终局' : turnName || (ids.length ? '等待决策' : '—')}
+                </b>
+              </div>
+              <div className="turnbar__order" aria-label="轮次顺序">
+                {players.length ? (
+                  players.map((p, i) => (
+                    <span
+                      className={
+                        'ordchip' +
+                        (st.turnPlayerId === p.id ? ' is-on' : '') +
+                        (p.alive === false ? ' is-dead' : '')
+                      }
+                      style={{ '--hue': String(hueOf(p)) }}
+                      key={p.id}
+                    >
+                      <i className="ordchip__n">{i + 1}</i>
+                      <span className="ordchip__name">{p.name || '?'}</span>
+                      {ids.indexOf(p.id) >= 0 ? <em className="ordchip__ask">待</em> : null}
+                    </span>
+                  ))
+                ) : (
+                  <span className="turnbar__empty">尚未入座</span>
+                )}
+              </div>
+              {st.round != null && st.round !== '' ? <span className="roundchip">第 {st.round} 轮</span> : null}
             </div>
 
             <div className="tabletop__head">
@@ -2290,8 +2561,11 @@ export default function TableClient({ roomId }) {
                 <div className="panel__kicker">{phaseKicker}</div>
                 <h1 className="tabletop__title">{tableTitle}</h1>
               </div>
-              {st.round != null && st.round !== '' ? <div className="roundchip">第 {st.round} 轮</div> : null}
             </div>
+
+            <div className="stage__desk">
+              <div className="desk__felt" aria-hidden="true" />
+              <div className="desk__scan" aria-hidden="true" />
 
             {ended ? (
               <div className="winner">
@@ -2301,13 +2575,21 @@ export default function TableClient({ roomId }) {
                   {st.winner && st.winner.id && st.winner.id === myPid ? '（你）' : ''}
                 </span>
                 <span className="winner__sub">ROOM {roomId}</span>
+                <a className="winner__back tbtn tbtn--sm" href="/">
+                  返回大厅
+                </a>
               </div>
             ) : null}
 
             {diceStage}
 
             {fx ? (
-              <div className="fx-stage" id="fx-stage" data-kind={fx.kind} ref={fxRef}>
+              <div
+                className={'fx-stage fx-stage--' + fx.kind}
+                id="fx-stage"
+                data-kind={fx.kind}
+                ref={fxRef}
+              >
                 <div className="fx-stage__kicker">{FX_LABELS[fx.kind]}</div>
                 <div className={'fx-stage__body fx--' + fx.kind}>
                   <span className="fx-glyph">{FX_GLYPH[fx.kind] || '·'}</span>
@@ -2315,6 +2597,40 @@ export default function TableClient({ roomId }) {
                   {fx.kind === 'vote' ? (
                     <span className="fx-bar" aria-hidden="true">
                       <i />
+                    </span>
+                  ) : null}
+                  {fx.kind === 'chip' ? (
+                    <span className="fx-chips" aria-hidden="true">
+                      <i />
+                      <i />
+                      <i />
+                    </span>
+                  ) : null}
+                  {fx.kind === 'bid' ? (
+                    <span className="fx-bubble" aria-hidden="true">
+                      {String(fx.text || '').slice(0, 10)}
+                    </span>
+                  ) : null}
+                  {fx.kind === 'clue' ? <span className="fx-line" aria-hidden="true" /> : null}
+                  {fx.kind === 'stamp' ? (
+                    <span className="fx-inkstamp" aria-hidden="true">
+                      印
+                    </span>
+                  ) : null}
+                  {fx.kind === 'phase' ? <span className="fx-sweep" aria-hidden="true" /> : null}
+                  {fx.kind === 'end' ? (
+                    <span className="fx-confetti" aria-hidden="true">
+                      {CONFETTI.map((c, i) => (
+                        <i
+                          key={i}
+                          style={{
+                            '--x': c.x + 'px',
+                            '--y': c.y + 'px',
+                            '--d': c.d + 'ms',
+                            '--s': c.s + 'px',
+                          }}
+                        />
+                      ))}
                     </span>
                   ) : null}
                 </div>
@@ -2388,6 +2704,7 @@ export default function TableClient({ roomId }) {
                 {meSecret ? <span className="selfcard__secret">{meSecret}</span> : null}
               </div>
             ) : null}
+            </div>
 
             {token ? (
               <div
@@ -2445,10 +2762,119 @@ export default function TableClient({ roomId }) {
               </div>
             ) : null}
           </section>
+          </div>
 
-          {/* 右：公开记录 */}
-          <aside className="panel logpanel" aria-label="公开记录">
-            <div className="panel__head">
+          {players.map((p, i) => (
+            <div
+              className={'seat seat--' + seatSlot(i, players.length)}
+              style={{ '--i': String(i) }}
+              key={'seat-' + p.id}
+            >
+              {rosterCard(p, i)}
+            </div>
+          ))}
+          {!players.length ? <div className="arena__empty">等待玩家入座</div> : null}
+        </main>
+
+        <aside className="panel logpanel wiretap sidepanel" aria-label="AI 输出与公开记录">
+          <div className="sidepanel__head">
+            <span className="panel__kicker">相关内容 / RELATED</span>
+            <span className="panel__meta">AI 输出 + 公开记录</span>
+          </div>
+          <div className={'wiretap__thought' + (thoughtOpen ? '' : ' is-folded')}>
+              <div className="panel__head">
+                <span className="panel__kicker">思考内容 / THOUGHT</span>
+                <span className="panel__meta">
+                  {thinkerIds.length ? 'LIVE · ' + thinkerIds.length : '待机'}
+                </span>
+                <button
+                  type="button"
+                  className="thought__fold"
+                  onClick={() => setThoughtOpen((v) => !v)}
+                  aria-expanded={thoughtOpen}
+                >
+                  {thoughtOpen ? '收起' : '展开'}
+                </button>
+              </div>
+              <div className="thought__body">
+              {thinkerIds.length ? (
+                thinkerIds.map((pid) => {
+                  const pl = playerOf(pid);
+                  const brand = brandOfPlayer(pl);
+                  return (
+                    <div className="tstream is-live" style={{ '--hue': String(hueOf(pl)) }} key={pid}>
+                      <div className="tstream__head">
+                        <span className="tstream__glyph">{pl ? safeGlyph(pl) : glyphFor(pid)}</span>
+                        <b className="tstream__name">{nameOf(pid)}</b>
+                        {brand ? (
+                          <span className="tstream__brand" style={{ color: brand.color }}>
+                            {brand.name}
+                          </span>
+                        ) : null}
+                        <span className="tstream__pulse" aria-hidden="true">
+                          <i />
+                          <i />
+                          <i />
+                        </span>
+                      </div>
+                      <div className="tstream__text">
+                        <Typewriter text={think[pid]} />
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="tstream__idle">
+                  {ended ? '牌局已结束，思考记录见右侧 WIRETAP。' : '当前没有 AI 在思考，轮到时会实时打在这里。'}
+                </div>
+              )}
+
+              {!thinkerIds.length && !thoughtHistory.length && players.length ? (
+                <div className="tstream__hist">
+                  <div className="tstream__histk">待命 / READY</div>
+                  {players.map((p) => {
+                    const b = brandOfPlayer(p);
+                    return (
+                      <div className="tstream__item" key={'ready-' + p.id}>
+                        <span className="tstream__itemmeta">
+                          {safeGlyph(p)} · {p.name || '?'}
+                        </span>
+                        <span className="tstream__itemtext">
+                          {b ? b.name : KIND_TEXT[p.kind] || p.kind || '玩家'} ·{' '}
+                          {p.alive === false ? '出局' : '在场'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              {thoughtHistory.length ? (
+                <div className="tstream__hist">
+                  <div className="tstream__histk">最近思考 / RECENT</div>
+                  {thoughtHistory
+                    .slice()
+                    .reverse()
+                    .map((item) => (
+                      <div className="tstream__item" key={'h-' + item.key}>
+                        <span className="tstream__itemmeta">
+                          {clock(item.at)} · {item.playerId ? nameOf(item.playerId) : '记录'}
+                        </span>
+                        <span className="tstream__itemtext">
+                          {String(item.text || '').replace(/^心想：/, '')}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              ) : null}
+              </div>
+              <div className="panel__foot">
+                <span>{thinkerIds.length ? '正在思考…' : '思考投屏 · 公开'}</span>
+                <span>{thoughtHistory.length} 条</span>
+              </div>
+            </div>
+
+            <div className="wiretap__loghead">
               <span className="panel__kicker">公开记录 / WIRETAP</span>
               <span className="panel__meta">{logs.length}</span>
             </div>
@@ -2460,18 +2886,22 @@ export default function TableClient({ roomId }) {
                     .replace(/[^a-z-]/g, '') || 'system';
                   const who = item.playerId ? nameOf(item.playerId) : '';
                   return (
-                    <div className={'lentry lentry--' + t} key={item.key}>
+                    <div
+                      className={'lentry lentry--' + t + (item.live ? ' is-live' : '')}
+                      key={item.key}
+                    >
                       <div className="lentry__meta">
                         <span>{clock(item.at)}</span>
                         {who ? <span>{who}</span> : null}
                         <span className="lentry__tag">{LOG_TAG[t] || '记录'}</span>
+                        {item.live ? <span className="lentry__live" aria-hidden="true" /> : null}
                       </div>
                       <div className="lentry__text">{item.text}</div>
                     </div>
                   );
                 })
               ) : (
-                <div className="logempty">还没有公开记录。牌桌上的发言与系统事件会打在这里。</div>
+                <div className="logempty">还没有公开记录。牌桌上的发言、AI 思考与系统事件会打在这里。</div>
               )}
             </div>
             <div className="panel__foot">
@@ -2479,7 +2909,7 @@ export default function TableClient({ roomId }) {
               <span>CH · 04</span>
             </div>
           </aside>
-        </main>
+        </div>
       </div>
 
       <div className={'toast' + (toastMsg ? ' show' : '')} role="status" aria-live="polite">

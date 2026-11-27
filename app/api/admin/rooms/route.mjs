@@ -25,25 +25,15 @@ export async function GET(request) {
       canIntervene: room.status !== 'ended' && admin.role !== 'viewer',
     }));
 
-    // 在线 AI 数 = 所有房间玩家中 kind === 'agent' 的总数
-    let agentsPresent = 0;
-    for (const room of rooms) {
-      try {
-        const players = await db.listPlayers(room.roomId);
-        agentsPresent += players.filter((p) => p && p.kind === 'agent').length;
-      } catch {
-        // 单房间读取失败不影响整体统计
-      }
-    }
-
-    const revealsToday = await db.countRawRevealsToday();
+    // 一次聚合查询拿到统计卡数据，避免按房间 N+1
+    const stats = await db.adminStats();
 
     return json({
       rooms: decorated,
       stats: {
-        activeRooms: rooms.filter((room) => room.status === 'playing').length,
-        agentsPresent,
-        revealsToday,
+        activeRooms: stats.activeRooms,
+        agentsPresent: stats.agentsPresent,
+        revealsToday: stats.revealsToday,
         unloggedOps: 0,
       },
       total: decorated.length,
