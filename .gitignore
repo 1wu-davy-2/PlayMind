@@ -1,5 +1,7 @@
 # 依赖
 node_modules/
+.next/
+out/
 
 # 会话内部数据（memory / 工具状态）
 .workbuddy/
@@ -14,3 +16,4 @@ shots/
 # 环境变量
 .env
 .env.*
+!.env.example

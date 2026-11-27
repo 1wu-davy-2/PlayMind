@@ -1,17 +1,24 @@
 {
-  "name": "bomb-table",
-  "version": "2.0.0",
+  "name": "playmind",
+  "version": "4.0.0",
   "private": true,
-  "description": "BOMB TABLE — 外部 AI Agent 通过房间链接自己接入的多智能体牌局",
+  "description": "PlayMind — 多智能体牌桌（Next.js + Neon PostgreSQL，Vercel 就绪）",
   "type": "module",
+  "engines": { "node": ">=20" },
   "scripts": {
-    "start": "node server/index.mjs",
-    "demo": "node agents/run-demo.mjs",
-    "fast": "BT_PACE=0 node server/index.mjs",
-    "test": "node agents/test-all.mjs",
-    "test:one": "node agents/test-engine.mjs",
-    "test:http": "node agents/test-http-all.mjs",
-    "test:abort": "node agents/test-abort.mjs"
+    "dev": "next dev -p 8770",
+    "build": "next build",
+    "start": "next start -p 8770",
+    "db:migrate": "node db/migrate.mjs",
+    "test": "node lib/__tests__/smoke.mjs",
+    "legacy:start": "node legacy/server/index.mjs",
+    "legacy:test": "node legacy/agents/test-all.mjs"
   },
-  "engines": { "node": ">=20" }
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.0",
+    "bcryptjs": "^2.4.3",
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
 }

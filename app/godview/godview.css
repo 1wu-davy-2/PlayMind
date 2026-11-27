@@ -1,0 +1,1230 @@
+/* ============================================================
+   造物主后台 · GODVIEW
+   从 design/mockups/godview.html 抽取，类名统一 gv- 前缀，
+   避免与 app/globals.css 的大厅 / 牌桌样式冲突。
+   ============================================================ */
+
+.godview-page {
+  /* tokens 已由根 layout 引入；此处给出同名 fallback，保证单页可用 */
+  --gv-paper: var(--paper, #EDE4CF);
+  --gv-paper-hi: var(--paper-hi, #FAF5E7);
+  --gv-paper-lo: var(--paper-lo, #DFD3B8);
+  --gv-ink: var(--ink, #17130C);
+  --gv-ink-70: var(--ink-70, rgba(23, 19, 12, .70));
+  --gv-ink-45: var(--ink-45, rgba(23, 19, 12, .45));
+  --gv-ink-22: var(--ink-22, rgba(23, 19, 12, .22));
+  --gv-ink-10: var(--ink-10, rgba(23, 19, 12, .10));
+  --gv-red: var(--red, #B23A28);
+  --gv-red-deep: var(--red-deep, #86281A);
+  --gv-success: var(--c-success, #3E5B3A);
+  --gv-warn: var(--c-warn, #8A6410);
+  --gv-glass: var(--glass-bg, rgba(237, 228, 207, .74));
+  --gv-glass-thick: var(--glass-bg-thick, rgba(250, 245, 231, .92));
+  --gv-blur: var(--glass-blur, 16px);
+  --gv-border: var(--glass-border, 1px solid rgba(255, 255, 255, .5));
+  --gv-r-sm: var(--r-sm, 8px);
+  --gv-r-md: var(--r-md, 12px);
+  --gv-r-lg: var(--r-lg, 18px);
+  --gv-r-pill: var(--r-pill, 999px);
+  --gv-sh1: var(--sh-1, 0 1px 2px rgba(23, 19, 12, .10), 0 2px 8px rgba(23, 19, 12, .06));
+  --gv-sh2: var(--sh-2, 0 4px 12px rgba(23, 19, 12, .12), 0 12px 28px rgba(23, 19, 12, .08));
+  --gv-sh3: var(--sh-3, 0 12px 28px rgba(23, 19, 12, .16), 0 28px 60px rgba(23, 19, 12, .14));
+  --gv-focus: var(--focus-ring, 0 0 0 3px rgba(178, 58, 40, .42));
+  --gv-ease: var(--ease-spring, cubic-bezier(.22, 1.2, .36, 1));
+
+  position: relative;
+  min-height: 100vh;
+  margin: 0;
+  font-family: var(--font-sans, "PingFang SC", "Microsoft YaHei", sans-serif);
+  color: var(--gv-ink);
+  background:
+    radial-gradient(circle at 10% 0%, rgba(250, 245, 231, .9), transparent 55%),
+    radial-gradient(circle at 90% 100%, rgba(223, 211, 184, .6), transparent 50%),
+    var(--gv-paper);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.gv-grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: .24;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+}
+
+.godview-page :is(button, input, select, textarea):focus-visible {
+  outline: none;
+  box-shadow: var(--gv-focus);
+}
+
+/* ---------- 登录 / 会话探测 ---------- */
+
+.gv-login {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.gv-login-card {
+  width: min(440px, 100%);
+  padding: 32px 32px 28px;
+  border-radius: var(--gv-r-lg);
+  background: var(--gv-glass-thick);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border: var(--gv-border);
+  box-shadow: var(--gv-sh3);
+}
+
+.gv-kicker {
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 12px;
+  letter-spacing: .2em;
+  color: var(--gv-red);
+}
+
+.gv-login-title {
+  margin: 8px 0 0;
+  font-family: var(--font-display, "Songti SC", serif);
+  font-size: clamp(30px, 5vw, 38px);
+  line-height: 1.12;
+  letter-spacing: -.018em;
+}
+
+.gv-login-title span,
+.gv-title span {
+  color: var(--gv-red);
+}
+
+.gv-login-desc {
+  margin: 14px 0 4px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--gv-ink-70);
+}
+
+.gv-login-note {
+  margin: 14px 0 0;
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 10.5px;
+  line-height: 1.65;
+  color: var(--gv-ink-45);
+}
+
+.gv-loading {
+  margin: 18px 0;
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 12px;
+  color: var(--gv-ink-45);
+}
+
+/* ---------- 表单基础件 ---------- */
+
+.gv-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 16px;
+  min-width: 0;
+}
+
+.gv-field label,
+.gv-reason label,
+.gv-field-inline label {
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 11px;
+  letter-spacing: .1em;
+  color: var(--gv-ink-70);
+}
+
+.gv-input {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--gv-ink-22);
+  border-radius: var(--gv-r-sm);
+  background: rgba(255, 255, 255, .45);
+  color: var(--gv-ink);
+  font-family: var(--font-sans, sans-serif);
+  font-size: 14px;
+  transition: border-color 180ms, box-shadow 180ms;
+}
+
+.gv-input::placeholder {
+  color: var(--gv-ink-22);
+}
+
+select.gv-input {
+  appearance: none;
+  padding-right: 30px;
+  cursor: pointer;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #6b6459 50%),
+    linear-gradient(135deg, #6b6459 50%, transparent 50%);
+  background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.gv-textarea {
+  width: 100%;
+  min-height: 64px;
+  resize: vertical;
+  padding: 9px 11px;
+  border-radius: var(--gv-r-sm);
+  border: 1px solid var(--gv-ink-22);
+  background: rgba(255, 255, 255, .45);
+  font-family: var(--font-sans, sans-serif);
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--gv-ink);
+}
+
+.gv-textarea:focus {
+  outline: none;
+  box-shadow: var(--gv-focus);
+}
+
+.gv-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+  padding: 10px 13px;
+  border: 1px solid var(--gv-red);
+  border-left-width: 4px;
+  border-radius: var(--gv-r-sm);
+  background: rgba(178, 58, 40, .1);
+  color: var(--gv-red-deep);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.gv-alert--modal {
+  margin-top: 14px;
+}
+
+/* ---------- 按钮 ---------- */
+
+.gv-btn {
+  cursor: pointer;
+  font-family: var(--font-sans, sans-serif);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 9px 16px;
+  border-radius: var(--gv-r-pill);
+  border: 1px solid var(--gv-ink-22);
+  background: transparent;
+  color: var(--gv-ink);
+  transition:
+    transform 400ms var(--gv-ease),
+    box-shadow 400ms var(--gv-ease),
+    background 240ms,
+    color 240ms,
+    border-color 240ms;
+}
+
+.gv-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--gv-sh1);
+}
+
+.gv-btn:active {
+  transform: scale(.96);
+  transition-duration: 0ms;
+}
+
+.gv-btn[disabled] {
+  opacity: .4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.gv-btn small {
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 9px;
+  opacity: .7;
+  margin-left: 4px;
+}
+
+.gv-btn--danger {
+  background: var(--gv-red);
+  color: #fff;
+  border-color: var(--gv-red-deep);
+}
+
+.gv-btn--kick {
+  color: var(--gv-red);
+  border-color: var(--gv-red);
+}
+
+.gv-btn--sm {
+  padding: 6px 11px;
+  font-size: 11px;
+}
+
+.gv-btn--wide {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 14px;
+}
+
+.gv-btn--reveal {
+  margin-top: 12px;
+  color: var(--gv-red);
+  border-color: var(--gv-red);
+}
+
+.gv-login-submit {
+  margin-top: 20px;
+}
+
+/* ---------- 主壳 ---------- */
+
+.gv-shell {
+  position: relative;
+  z-index: 1;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.gv-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+  flex-wrap: wrap;
+  border-bottom: 2px solid var(--gv-ink);
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+}
+
+.gv-title {
+  margin: 6px 0 0;
+  font-family: var(--font-display, "Songti SC", serif);
+  font-size: clamp(30px, 4vw, 44px);
+  line-height: 1.1;
+  letter-spacing: -.018em;
+}
+
+.gv-session {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  text-align: right;
+}
+
+.gv-power {
+  margin: 0;
+  font-family: var(--font-display, "Songti SC", serif);
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--gv-ink-70);
+  max-width: 520px;
+}
+
+.gv-power b {
+  color: var(--gv-red);
+}
+
+.gv-who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.gv-who-name {
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.gv-role {
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 10px;
+  letter-spacing: .06em;
+  border: 1px solid var(--gv-red);
+  color: var(--gv-red);
+  padding: 2px 8px;
+  border-radius: var(--gv-r-pill);
+  white-space: nowrap;
+}
+
+/* ---------- 统计条 ---------- */
+
+.gv-statrow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.gv-stat {
+  padding: 14px 18px;
+  border-radius: var(--gv-r-lg);
+  background: var(--gv-glass);
+  -webkit-backdrop-filter: blur(var(--gv-blur));
+  backdrop-filter: blur(var(--gv-blur));
+  border: var(--gv-border);
+  box-shadow: var(--gv-sh1);
+  min-width: 0;
+}
+
+.gv-stat b {
+  display: block;
+  font-family: var(--font-display, "Songti SC", serif);
+  font-size: 30px;
+  line-height: 1.1;
+}
+
+.gv-stat span {
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 10px;
+  letter-spacing: .1em;
+  color: var(--gv-ink-70);
+}
+
+.gv-stat--red b {
+  color: var(--gv-red);
+}
+
+.gv-stat--ok b {
+  color: var(--gv-success);
+}
+
+/* ---------- 网格 / 面板 ---------- */
+
+.gv-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.gv-panel {
+  min-width: 0;
+  padding: 18px;
+  border-radius: var(--gv-r-lg);
+  background: var(--gv-glass);
+  -webkit-backdrop-filter: blur(var(--gv-blur));
+  backdrop-filter: blur(var(--gv-blur));
+  border: var(--gv-border);
+  box-shadow: var(--gv-sh2);
+}
+
+.gv-span {
+  grid-column: 1 / -1;
+}
+
+.gv-detail {
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gv-ink-22) transparent;
+}
+
+.gv-detail::-webkit-scrollbar {
+  width: 6px;
+}
+
+.gv-detail::-webkit-scrollbar-thumb {
+  background: var(--gv-ink-22);
+}
+
+.gv-phead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.gv-phead h2 {
+  margin: 0;
+  font-family: var(--font-display, "Songti SC", serif);
+  font-size: 18px;
+  letter-spacing: .02em;
+}
+
+.gv-meta {
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 11px;
+  color: var(--gv-ink-45);
+}
+
+.gv-detail-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gv-rawflag {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: #fff;
+  background: var(--gv-red);
+  padding: 3px 9px;
+  border-radius: var(--gv-r-pill);
+  white-space: nowrap;
+}
+
+.gv-audit-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ---------- 筛选 ---------- */
+
+.gv-filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.gv-filters .gv-input {
+  flex: 1 1 170px;
+}
+
+.gv-filters select.gv-input {
+  flex: 0 1 150px;
+}
+
+.gv-seg {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  background: rgba(23, 19, 12, .05);
+  padding: 4px;
+  border-radius: var(--gv-r-pill);
+}
+
+.gv-seg button {
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+  padding: 7px 13px;
+  border-radius: var(--gv-r-pill);
+  font-family: var(--font-sans, sans-serif);
+  font-size: 12px;
+  color: var(--gv-ink-70);
+  transition: transform 400ms var(--gv-ease), background 400ms var(--gv-ease), color 200ms;
+}
+
+.gv-seg button:hover {
+  transform: scale(1.05);
+}
+
+.gv-seg button.is-on {
+  background: var(--gv-paper-hi);
+  color: var(--gv-ink);
+  box-shadow: var(--gv-sh1);
+  font-weight: 700;
+}
+
+.gv-seg button:active {
+  transform: scale(.95);
+  transition-duration: 0ms;
+}
+
+/* ---------- 房间列表 ---------- */
+
+.gv-rooms {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gv-room {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  padding: 14px;
+  border-radius: var(--gv-r-md);
+  border: 1px solid var(--gv-ink-10);
+  background: rgba(255, 255, 255, .24);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 400ms var(--gv-ease),
+    box-shadow 400ms var(--gv-ease),
+    border-color 400ms var(--gv-ease);
+}
+
+.gv-room:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--gv-sh2);
+}
+
+.gv-room:active {
+  transform: scale(.995);
+  transition-duration: 0ms;
+}
+
+.gv-room.is-on {
+  border-color: var(--gv-red);
+  box-shadow: inset 3px 0 0 var(--gv-red), var(--gv-sh1);
+}
+
+.gv-room-glyph {
+  width: 42px;
+  height: 42px;
+  flex: none;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display, "Songti SC", serif);
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--gv-red);
+}
+
+.gv-room-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.gv-room-id {
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.gv-room-game {
+  font-family: var(--font-display, "Songti SC", serif);
+  font-size: 14px;
+}
+
+.gv-room-meta {
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 10px;
+  color: var(--gv-ink-45);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gv-room-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex: none;
+}
+
+.gv-badge {
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 10px;
+  padding: 3px 9px;
+  border-radius: var(--gv-r-pill);
+  white-space: nowrap;
+}
+
+.gv-badge--play {
+  color: var(--gv-success);
+  background: rgba(62, 91, 58, .12);
+}
+
+.gv-badge--wait {
+  color: var(--gv-warn);
+  background: rgba(138, 100, 16, .12);
+}
+
+.gv-badge--end {
+  color: var(--gv-ink-45);
+  background: rgba(23, 19, 12, .06);
+}
+
+.gv-room-n {
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 11px;
+  color: var(--gv-ink-70);
+}
+
+.gv-empty {
+  margin: 0;
+  padding: 16px 0;
+  text-align: center;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--gv-ink-45);
+}
+
+/* ---------- 详情 ---------- */
+
+.gv-detail h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 18px 0 8px;
+  font-family: var(--font-display, "Songti SC", serif);
+  font-size: 15px;
+}
+
+.gv-detail h3 em {
+  font-style: normal;
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 10px;
+  letter-spacing: .06em;
+  color: var(--gv-ink-45);
+}
+
+.gv-kv {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--gv-ink-10);
+  font-size: 12px;
+}
+
+.gv-kv span {
+  color: var(--gv-ink-70);
+  flex: none;
+}
+
+.gv-kv b {
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-weight: 700;
+  text-align: right;
+  word-break: break-word;
+}
+
+.gv-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--gv-ink-10);
+  border-radius: var(--gv-r-md);
+}
+
+.gv-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.gv-table th {
+  padding: 8px 10px;
+  text-align: left;
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 9.5px;
+  font-weight: 400;
+  letter-spacing: .1em;
+  color: var(--gv-ink-45);
+  background: rgba(23, 19, 12, .03);
+  border-bottom: 1px solid var(--gv-ink-22);
+  white-space: nowrap;
+}
+
+.gv-table td {
+  padding: 8px 10px;
+  vertical-align: top;
+  border-bottom: 1px dashed var(--gv-ink-10);
+}
+
+.gv-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.gv-seat {
+  font-family: var(--font-mono, "Courier New", monospace);
+  color: var(--gv-ink-45);
+}
+
+.gv-name {
+  font-family: var(--font-display, "Songti SC", serif);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.gv-sub {
+  margin-top: 2px;
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--gv-ink-45);
+  word-break: break-all;
+}
+
+.gv-dead {
+  display: inline-block;
+  padding: 0 4px;
+  border: 1px solid var(--gv-red);
+  border-radius: 3px;
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 10px;
+  color: var(--gv-red);
+}
+
+.gv-hp,
+.gv-mono-cell {
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 11px;
+  color: var(--gv-ink-70);
+}
+
+.gv-lock {
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 10.5px;
+  color: var(--gv-ink-45);
+  word-break: break-all;
+}
+
+.gv-js {
+  display: block;
+  max-width: 260px;
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--gv-ink-70);
+  word-break: break-all;
+}
+
+.gv-js--hot {
+  color: var(--gv-red-deep);
+}
+
+/* 私有揭示块 */
+
+.gv-reveal {
+  padding: 12px;
+  border-radius: var(--gv-r-md);
+  background: rgba(23, 19, 12, .05);
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+.gv-reveal.is-raw {
+  background: rgba(178, 58, 40, .06);
+  border: 1px solid rgba(178, 58, 40, .25);
+  animation: gv-rise 420ms var(--gv-ease);
+}
+
+.gv-mplayer + .gv-mplayer {
+  margin-top: 6px;
+}
+
+.gv-mplayer .gv-mline:last-child {
+  border-bottom: 0;
+}
+
+.gv-mline {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 0;
+  border-bottom: 1px dashed var(--gv-ink-10);
+}
+
+.gv-reveal > .gv-mline:last-child {
+  border-bottom: 0;
+}
+
+.gv-mline span {
+  flex: 0 1 48%;
+  color: var(--gv-ink-70);
+  word-break: break-word;
+}
+
+.gv-mline b {
+  flex: 1 1 auto;
+  font-weight: 400;
+  text-align: right;
+  color: var(--gv-ink-45);
+  word-break: break-word;
+}
+
+.gv-reveal.is-raw .gv-mline b {
+  color: var(--gv-red);
+  font-weight: 700;
+}
+
+@keyframes gv-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.gv-reveal-hint {
+  margin-top: 8px;
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 10px;
+  line-height: 1.65;
+  color: var(--gv-ink-45);
+}
+
+.gv-warnbox {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: var(--gv-r-sm);
+  background: rgba(178, 58, 40, .08);
+  border: 1px solid rgba(178, 58, 40, .3);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--gv-red-deep);
+}
+
+.gv-warnbox b {
+  color: var(--gv-red-deep);
+}
+
+.gv-warnbox--warn {
+  background: rgba(138, 100, 16, .1);
+  border-color: rgba(138, 100, 16, .3);
+  color: var(--gv-warn);
+}
+
+.gv-ops {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+/* 待决请求 / 事件 / 思考链 */
+
+.gv-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gv-list li {
+  padding: 8px 10px;
+  border: 1px solid var(--gv-ink-10);
+  border-radius: var(--gv-r-sm);
+  background: rgba(255, 255, 255, .2);
+  font-size: 11.5px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.gv-json {
+  margin-top: 2px;
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 10px;
+  color: var(--gv-ink-70);
+  word-break: break-all;
+}
+
+.gv-json.is-locked {
+  color: var(--gv-ink-45);
+}
+
+.gv-ev-seq {
+  margin-right: 6px;
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 9.5px;
+  color: var(--gv-ink-45);
+}
+
+.gv-ev-vis {
+  margin-left: 6px;
+  padding: 0 4px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 9px;
+  color: var(--gv-red);
+}
+
+/* ---------- 审计 ---------- */
+
+.gv-audit-wrap {
+  max-height: 420px;
+  overflow: auto;
+  border: 1px solid var(--gv-ink-10);
+  border-radius: var(--gv-r-md);
+  scrollbar-width: thin;
+  scrollbar-color: var(--gv-ink-22) transparent;
+}
+
+.gv-audit-wrap::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.gv-audit-wrap::-webkit-scrollbar-thumb {
+  background: var(--gv-ink-22);
+}
+
+.gv-audit-table {
+  min-width: 760px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.gv-audit-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--gv-paper-lo);
+}
+
+.gv-audit-action {
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 10.5px;
+  word-break: break-all;
+}
+
+.gv-audit-reason {
+  min-width: 160px;
+  max-width: 320px;
+  word-break: break-word;
+}
+
+.gv-audit-seal {
+  display: inline-block;
+  padding: 0 5px;
+  border: 1px solid var(--gv-success);
+  border-radius: 4px;
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 9px;
+  color: var(--gv-success);
+  white-space: nowrap;
+}
+
+.gv-nowrap {
+  font-family: var(--font-mono, "Courier New", monospace);
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--gv-ink-70);
+}
+
+/* ---------- 弹窗 ---------- */
+
+.gv-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(23, 19, 12, .4);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+.gv-sheet {
+  width: min(460px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px;
+  border-radius: var(--gv-r-lg);
+  background: var(--gv-glass-thick);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border: var(--gv-border);
+  box-shadow: var(--gv-sh3);
+  animation: gv-pop 300ms var(--gv-ease);
+}
+
+@keyframes gv-pop {
+  from { opacity: 0; transform: scale(.9) translateY(20px); }
+  to { opacity: 1; transform: none; }
+}
+
+.gv-sheet h2 {
+  margin: 0 0 10px;
+  font-family: var(--font-display, "Songti SC", serif);
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+.gv-sheet-desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--gv-ink-70);
+}
+
+.gv-target {
+  font-family: var(--font-mono, "Courier New", monospace);
+  color: var(--gv-red);
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.gv-field-inline {
+  margin-top: 12px;
+}
+
+.gv-reason {
+  margin-top: 14px;
+}
+
+.gv-reason label {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.gv-audit-tip {
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--gv-red);
+}
+
+.gv-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 14px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--gv-ink-70);
+  cursor: pointer;
+}
+
+.gv-check input {
+  margin-top: 2px;
+  accent-color: var(--gv-red);
+  flex: none;
+}
+
+.gv-sheet-ops {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+/* ---------- Toast ---------- */
+
+.gv-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translate(-50%, 20px);
+  opacity: 0;
+  pointer-events: none;
+  max-width: min(92vw, 640px);
+  padding: 11px 20px;
+  border-radius: var(--gv-r-pill);
+  background: var(--gv-ink);
+  color: var(--gv-paper-hi);
+  font-size: 13px;
+  text-align: center;
+  z-index: 9600;
+  transition: all 300ms var(--gv-ease);
+}
+
+.gv-toast.is-show {
+  transform: translate(-50%, 0);
+  opacity: 1;
+}
+
+.gv-toast.is-bad {
+  background: var(--gv-red);
+  color: #fff;
+}
+
+/* ---------- 响应式 ---------- */
+
+@media (max-width: 900px) {
+  .gv-shell {
+    padding: 16px 14px 40px;
+  }
+
+  .gv-top {
+    align-items: flex-start;
+  }
+
+  .gv-session {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .gv-who {
+    justify-content: flex-start;
+  }
+
+  .gv-statrow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gv-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gv-detail {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .gv-room {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .gv-statrow {
+    grid-template-columns: 1fr;
+  }
+
+  .gv-login-card {
+    padding: 24px 20px 22px;
+  }
+
+  .gv-room-glyph {
+    display: none;
+  }
+
+  .gv-mline {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .gv-mline span {
+    flex: none;
+  }
+
+  .gv-mline b {
+    text-align: left;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .godview-page *,
+  .godview-page *::before,
+  .godview-page *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
